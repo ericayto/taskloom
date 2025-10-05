@@ -350,25 +350,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Focus session methods
-  const addFocusSession = useCallback(async (session: Omit<FocusSession, 'id' | 'createdAt'>) => {
-    const newSession: FocusSession = {
-      ...session,
-      id: generateId(),
-      createdAt: new Date(),
-    }
-    await db.add('focusSessions', newSession)
-    setFocusSessions((prev) => [...prev, newSession])
+  const addFocusSession = useCallback(
+    async (session: Omit<FocusSession, 'id' | 'createdAt'>) => {
+      const newSession: FocusSession = {
+        ...session,
+        id: generateId(),
+        createdAt: new Date(),
+      }
+      await db.add('focusSessions', newSession)
+      setFocusSessions((prev) => [...prev, newSession])
 
-    // Update topic last reviewed dates
-    if (session.topicIds.length > 0) {
-      const now = new Date()
-      await Promise.all(
-        session.topicIds.map((topicId) =>
-          updateTopic(topicId, { lastReviewed: now })
+      // Update topic last reviewed dates
+      if (session.topicIds.length > 0) {
+        const now = new Date()
+        await Promise.all(
+          session.topicIds.map((topicId) =>
+            updateTopic(topicId, { lastReviewed: now })
+          )
         )
-      )
-    }
-  }, [])
+      }
+    },
+    [updateTopic]
+  )
 
   const updateFocusSession = useCallback(async (id: string, updates: Partial<FocusSession>) => {
     const session = focusSessions.find((s) => s.id === id)

@@ -197,29 +197,35 @@ export async function generateWeeklySummary(
 }
 
 export function calculateStreak(sessions: FocusSession[]): number {
-  if (sessions.length === 0) return 0
+  if (sessions.length === 0) {
+    return 0
+  }
 
-  // Sort sessions by date
-  const sorted = [...sessions].sort(
-    (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+  const DAY_IN_MS = 1000 * 60 * 60 * 24
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Use a Set so multiple sessions on the same day don't affect the streak
+  const uniqueSessionDays = new Set(
+    sessions.map((session) => {
+      const sessionDate = new Date(session.startTime)
+      sessionDate.setHours(0, 0, 0, 0)
+      return sessionDate.getTime()
+    })
   )
 
+  const orderedDays = Array.from(uniqueSessionDays).sort((a, b) => b - a)
+
   let streak = 0
-  let currentDate = new Date()
-  currentDate.setHours(0, 0, 0, 0)
+  let expectedDay = today.getTime()
 
-  for (const session of sorted) {
-    const sessionDate = new Date(session.startTime)
-    sessionDate.setHours(0, 0, 0, 0)
-
-    const daysDiff = Math.floor(
-      (currentDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
-    )
-
-    if (daysDiff === streak || (streak === 0 && daysDiff === 0)) {
+  for (const day of orderedDays) {
+    if (day === expectedDay) {
       streak++
-      currentDate = sessionDate
-    } else {
+      expectedDay -= DAY_IN_MS
+    } else if (day < expectedDay) {
+      // Because the days are sorted newest first, encountering a gap
+      // means the streak is broken
       break
     }
   }
