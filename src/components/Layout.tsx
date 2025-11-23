@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../hooks/useApp'
 import { useState, useRef, useEffect } from 'react'
-import { BarChart3, CheckSquare, Calendar, BookOpen, Focus, Sparkles, ChevronRight, ChevronLeft, Settings, Lock } from 'lucide-react'
+import { BarChart3, CheckSquare, Calendar, BookOpen, Focus, ChevronRight, ChevronLeft, Settings, Lock } from 'lucide-react'
 import { useStudyStore } from '../stores/useStudyStore'
 
 interface LayoutProps {
@@ -24,7 +24,6 @@ const Layout = ({ children }: LayoutProps) => {
     { id: 'planner', label: 'Planner', icon: Calendar, path: '/planner' },
     { id: 'subjects', label: 'Subjects', icon: BookOpen, path: '/subjects' },
     { id: 'focus', label: 'Focus', icon: Focus, path: '/focus' },
-    { id: 'review', label: 'Review', icon: Sparkles, path: '/review' },
   ]
 
   const isActive = (path: string) => location.pathname === path
@@ -59,21 +58,21 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="h-screen bg-[#050505] flex relative overflow-hidden selection:bg-accent-purple/30">
+    <div className="h-screen flex relative overflow-hidden selection:bg-white/30 bg-[var(--sand-900)]">
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent-purple/5 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent-blue/5 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(246,196,83,0.12),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(248,114,158,0.12),transparent_35%),radial-gradient(circle_at_50%_90%,rgba(114,231,194,0.12),transparent_35%)]" />
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
       </div>
 
       {/* Sidebar */}
       <motion.aside
-        className={`h-screen bg-[#0A0A0A]/50 backdrop-blur-xl border-r border-white/[0.06] flex flex-col relative z-10 transition-colors duration-300 ${isFocusActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}
+        className={`h-screen bg-black/45 backdrop-blur-2xl border-r border-white/[0.06] flex flex-col relative z-10 transition-colors duration-300 ${isFocusActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}
         initial={{ x: -20, opacity: 0 }}
         animate={{
           x: 0,
           opacity: isFocusActive ? 0.5 : 1,
-          width: isCollapsed ? '80px' : '260px'
+          width: isCollapsed ? '88px' : '264px'
         }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
@@ -90,12 +89,12 @@ const Layout = ({ children }: LayoutProps) => {
 
         <div className="flex items-center justify-between mb-6 p-6 pb-0">
           {!isCollapsed && (
-            <Link to="/overview" className="flex items-center gap-2" onClick={(e) => handleNavigation('/overview', e)}>
-              <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-black font-bold text-[10px]">
-                <CheckSquare size={14} strokeWidth={3} />
+            <Link to="/overview" className="flex items-center gap-3" onClick={(e) => handleNavigation('/overview', e)}>
+              <div className="w-9 h-9 bg-gradient-to-br from-[#f6c453] via-[#f8729e] to-[#72e7c2] rounded-2xl flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-black/30">
+                <CheckSquare size={16} strokeWidth={3} />
               </div>
               <motion.h1
-                className="text-lg font-bold text-white tracking-tight"
+                className="text-lg font-semibold text-white tracking-tight"
                 whileHover={{ opacity: 0.8 }}
               >
                 TaskLoom
@@ -104,7 +103,7 @@ const Layout = ({ children }: LayoutProps) => {
           )}
           <motion.button
             onClick={() => !isFocusActive && setIsCollapsed(!isCollapsed)}
-            className={`p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.04] transition-all duration-200 ${isCollapsed ? 'mx-auto' : ''}`}
+            className={`p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08] transition-all duration-200 ${isCollapsed ? 'mx-auto' : ''}`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             disabled={isFocusActive}
@@ -127,8 +126,8 @@ const Layout = ({ children }: LayoutProps) => {
               >
                 <motion.div
                   className={`flex items-center rounded-xl cursor-pointer transition-all duration-200 group ${active
-                    ? 'bg-white text-black shadow-lg shadow-white/5'
-                    : 'text-white/50 hover:text-white hover:bg-white/[0.04]'
+                    ? 'bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black shadow-lg shadow-black/30'
+                    : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                     } ${isCollapsed ? 'justify-center py-4 px-2' : 'gap-4 px-6 py-4'}`}
                   title={isCollapsed ? item.label : undefined}
                   whileTap={{ scale: 0.98 }}
@@ -159,15 +158,15 @@ const Layout = ({ children }: LayoutProps) => {
           >
             <motion.div
               onClick={() => !isFocusActive && setShowUserMenu(!showUserMenu)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/[0.04] transition-all duration-200 cursor-pointer group ${isFocusActive ? 'pointer-events-none' : ''}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/[0.06] transition-all duration-200 cursor-pointer group ${isFocusActive ? 'pointer-events-none' : ''}`}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-purple to-accent-blue flex items-center justify-center text-white text-xs font-bold shadow-inner">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#f6c453] via-[#f8729e] to-[#72e7c2] flex items-center justify-center text-black text-xs font-bold shadow-inner shadow-black/30">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate group-hover:text-accent-purple transition-colors">
+                <p className="text-white text-sm font-medium truncate group-hover:text-white transition-colors">
                   {user?.name || 'Student'}
                 </p>
                 <p className="text-white/40 text-xs capitalize">
@@ -181,7 +180,7 @@ const Layout = ({ children }: LayoutProps) => {
             <AnimatePresence>
               {showUserMenu && (
                 <motion.div
-                  className="absolute bottom-full left-4 right-4 mb-2 bg-dark-900 border border-white/10 rounded-xl overflow-hidden shadow-lg z-50"
+                  className="absolute bottom-full left-4 right-4 mb-2 bg-black/80 border border-white/10 rounded-xl overflow-hidden shadow-lg z-50 backdrop-blur-xl"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}

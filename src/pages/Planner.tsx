@@ -25,14 +25,20 @@ const Planner = () => {
     <Layout>
       {/* Header */}
       <motion.header
-        className="px-8 py-6 flex items-center justify-between"
+        className="px-8 py-8 flex items-center justify-between flex-wrap gap-4"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
         <div className="flex items-center gap-8">
-          <h2 className="text-3xl font-bold text-white tracking-tight">Planner</h2>
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/70 mb-3">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2]" />
+              Weekly anchors
+            </div>
+            <h2 className="text-3xl font-bold text-white tracking-tight">Planner</h2>
+          </div>
           
-          <div className="flex items-center gap-4 bg-[#111] rounded-full p-1 border border-white/10">
+          <div className="flex items-center gap-4 bg-white/5 rounded-full p-1 border border-white/10">
             <button 
               onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
               className="p-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-colors"
@@ -52,11 +58,11 @@ const Planner = () => {
         </div>
 
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#111] hover:bg-white/5 border border-white/10 rounded-lg text-white/80 text-sm font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 text-sm font-medium transition-colors">
             <RefreshCw size={14} />
             Smart Reschedule
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white/90 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black rounded-full text-sm font-semibold hover:scale-[1.02] transition-transform shadow-lg shadow-black/25">
             <Wand2 size={14} />
             Auto-Plan Week
           </button>
@@ -65,10 +71,10 @@ const Planner = () => {
 
       {/* Calendar Grid */}
       <div className="flex-1 overflow-hidden flex flex-col px-8 pb-8">
-        <div className="flex-1 bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+        <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col backdrop-blur-sm">
           {/* Days Header */}
           <div className="grid grid-cols-8 border-b border-white/10">
-            <div className="p-4 border-r border-white/10 flex items-center justify-center bg-[#111]">
+            <div className="p-4 border-r border-white/10 flex items-center justify-center bg-white/5">
               <span className="text-xs font-medium text-white/40">TIME</span>
             </div>
             {weekDays.map((day) => {
@@ -76,12 +82,12 @@ const Planner = () => {
               return (
                 <div 
                   key={day.toString()} 
-                  className={`p-4 border-r border-white/10 last:border-r-0 text-center ${isToday ? 'bg-blue-500/10' : ''}`}
+                  className={`p-4 border-r border-white/10 last:border-r-0 text-center ${isToday ? 'bg-gradient-to-b from-[#f6c453]/10 via-[#f8729e]/10 to-transparent' : ''}`}
                 >
-                  <div className={`text-xs font-medium mb-1 ${isToday ? 'text-blue-400' : 'text-white/40'}`}>
+                  <div className={`text-xs font-medium mb-1 ${isToday ? 'text-white' : 'text-white/40'}`}>
                     {format(day, 'EEE')}
                   </div>
-                  <div className={`text-xl font-bold ${isToday ? 'text-blue-400' : 'text-white'}`}>
+                  <div className={`text-xl font-bold ${isToday ? 'text-white' : 'text-white'}`}>
                     {format(day, 'd')}
                   </div>
                 </div>
@@ -93,7 +99,7 @@ const Planner = () => {
           <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <div className="grid grid-cols-8 relative min-h-[1000px]">
               {/* Time Column */}
-              <div className="border-r border-white/10 bg-[#111]">
+              <div className="border-r border-white/10 bg-white/5">
                 {hours.map((hour) => (
                   <div key={hour} className="h-20 border-b border-white/5 relative">
                     <span className="absolute top-[-6px] right-4 text-xs text-white/20 font-mono">

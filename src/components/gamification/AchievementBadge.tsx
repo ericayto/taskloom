@@ -34,8 +34,6 @@ const AchievementBadge = ({
         return 'border-purple-500/50'
       case 'task':
         return 'border-green-500/50'
-      case 'flashcard':
-        return 'border-pink-500/50'
       default:
         return 'border-white/30'
     }
@@ -53,8 +51,6 @@ const AchievementBadge = ({
         return 'shadow-purple-500/30'
       case 'task':
         return 'shadow-green-500/30'
-      case 'flashcard':
-        return 'shadow-pink-500/30'
       default:
         return ''
     }

@@ -1,575 +1,592 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
-  Check, Star, Target, BarChart3, Sparkles, Brain, Coffee, Moon,
-  ArrowRight, Layout, Users, Shield, Focus
+  ArrowRight,
+  BookOpenCheck,
+  Check,
+  Clock3,
+  Flame,
+  Focus,
+  LayoutDashboard,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Timer,
+  Waves,
+  Zap,
 } from 'lucide-react'
-import { cn } from '../lib/utils'
 import { DotLoader } from '../components/ui/dot-loader'
 
+type FeatureId = 'planner' | 'focus' | 'progress'
+
+const heroSchedule = [
+  {
+    title: 'Essay outline',
+    subject: 'History',
+    time: '09:00',
+    duration: '50m',
+    accent: 'from-[#f6c453] to-[#f29b38]',
+  },
+  {
+    title: 'Problem set',
+    subject: 'Calculus',
+    time: '12:30',
+    duration: '40m',
+    accent: 'from-[#f29b38] to-[#f8729e]',
+  },
+  {
+    title: 'Lab review',
+    subject: 'Biology',
+    time: '16:00',
+    duration: '30m',
+    accent: 'from-[#f8729e] to-[#72e7c2]',
+  },
+]
+
+const featureTabs: Array<{
+  id: FeatureId
+  title: string
+  accent: string
+  description: string
+  icon: typeof LayoutDashboard
+  highlights: string[]
+}> = [
+  {
+    id: 'planner',
+    title: 'Rhythmic planner',
+    accent: 'from-[#f6c453] via-[#f29b38] to-[#f8729e]',
+    description: 'Block tasks into calm weekly waves with buffers and priorities that make sense.',
+    icon: LayoutDashboard,
+    highlights: [
+      'Auto-spaces deadlines before they snowball',
+      'Drag blocks to rebalance heavy days instantly',
+      'Subject colors keep your week readable at a glance',
+    ],
+  },
+  {
+    id: 'focus',
+    title: 'Focus studio',
+    accent: 'from-[#f8729e] via-[#72e7c2] to-[#8ae6ff]',
+    description: 'Ambient timers, gentle micro-motions, and status locks keep you in the flow.',
+    icon: Focus,
+    highlights: [
+      'Pomodoro & deep work modes with intentional breaks',
+      'Session locks mute distractions across the workspace',
+      'Ambient pulses and loaders so you feel time passing',
+    ],
+  },
+  {
+    id: 'progress',
+    title: 'Progress you can feel',
+    accent: 'from-[#72e7c2] via-[#f6c453] to-[#f29b38]',
+    description: 'See streaks, minutes, and wins stack into a story you trust.',
+    icon: BookOpenCheck,
+    highlights: [
+      'Daily goals tied to focus minutes and completed tasks',
+      'Level-up moments delivered as soft, celebratory toasts',
+      'Momentum view shows when you thrive—mornings or nights',
+    ],
+  },
+]
+
+const flowSteps = [
+  {
+    title: 'Plan your week',
+    description: 'Pin anchors, then let TaskLoom pace the rest with built-in buffers.',
+    icon: Clock3,
+    tone: 'text-[#f6c453] bg-[#f6c453]/10 border-[#f6c453]/30',
+  },
+  {
+    title: 'Protect focus',
+    description: 'Start a session, lock navigation, and settle into ambient clarity.',
+    icon: Timer,
+    tone: 'text-[#f8729e] bg-[#f8729e]/10 border-[#f8729e]/30',
+  },
+  {
+    title: 'Reflect with intent',
+    description: 'See streaks, steady minutes, and the small wins that keep you moving.',
+    icon: Sparkles,
+    tone: 'text-[#72e7c2] bg-[#72e7c2]/10 border-[#72e7c2]/30',
+  },
+]
+
+const trustSignals = [
+  { label: 'Students onboarded', value: '4,200+' },
+  { label: 'Average streak', value: '9.4 days' },
+  { label: 'Tasks finished on time', value: '93%' },
+]
+
 const Landing = () => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [activeFeature, setActiveFeature] = useState<FeatureId>('planner')
 
-  useEffect(() => {
-    console.log("Landing page mounted")
-  }, [])
-
-  const [activeFeature, setActiveFeature] = useState(0)
-  const [persona, setPersona] = useState<'planner' | 'focus' | 'night'>('planner')
-
-  // Pong animation frames for the dot loader
-  const pongGame = [
-    [14, 7, 0, 8, 6, 13, 20],
-    [14, 7, 13, 20, 16, 27, 21],
-    [14, 20, 27, 21, 34, 24, 28],
-    [27, 21, 34, 28, 41, 32, 35],
-    [34, 28, 41, 35, 48, 40, 42],
-    [34, 28, 41, 35, 48, 42, 46],
-    [34, 28, 41, 35, 48, 42, 38],
-    [34, 28, 41, 35, 48, 30, 21],
-    [34, 28, 41, 48, 21, 22, 14],
-    [34, 28, 41, 21, 14, 16, 27],
-    [34, 28, 21, 14, 10, 20, 27],
-    [28, 21, 14, 4, 13, 20, 27],
-    [28, 21, 14, 12, 6, 13, 20],
-    [28, 21, 14, 6, 13, 20, 11],
-    [28, 21, 14, 6, 13, 20, 10],
-    [14, 6, 13, 20, 9, 7, 21],
-  ]
-
-  const features = [
-    {
-      title: "Organize",
-      icon: Layout,
-      description: "Bring order to chaos. Manage subjects, tasks, and deadlines in one beautiful workspace.",
-      color: "from-blue-500 to-cyan-500",
-      visual: (
-        <div className="w-full h-full p-6 flex flex-col gap-4">
-          {[
-            { title: 'Physics', progress: 75, color: 'bg-blue-500', grade: 'A' },
-            { title: 'Mathematics', progress: 45, color: 'bg-purple-500', grade: 'B+' },
-            { title: 'History', progress: 90, color: 'bg-orange-500', grade: 'A-' },
-          ].map((subject, i) => (
-            <motion.div
-              key={i}
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: i * 0.1 }}
-              className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
-            >
-              <div className={`w-10 h-10 rounded-lg ${subject.color} bg-opacity-20 flex items-center justify-center text-xs font-bold ${subject.color.replace('bg-', 'text-')}`}>
-                {subject.title.substring(0, 2)}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium text-white/80">{subject.title}</span>
-                  <span className="text-xs text-white/40">{subject.progress}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${subject.progress}%` }}
-                    transition={{ delay: 0.5 + (i * 0.1), duration: 1 }}
-                    className={`h-full ${subject.color}`}
-                  />
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-xs font-bold text-white/60 group-hover:border-white/30 group-hover:text-white transition-colors">
-                {subject.grade}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )
-    },
-    {
-      title: "Focus",
-      icon: Focus,
-      description: "Enter the flow state. Customizable timers and ambient modes to keep you locked in.",
-      color: "from-purple-500 to-pink-500",
-      visual: (
-        <div className="w-full h-full flex items-center justify-center flex-col relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent" />
-
-          {/* Timer Display */}
-          <div className="relative z-10 flex flex-col items-center gap-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-5xl font-bold font-mono tracking-tighter text-white"
-            >
-              25:00
-            </motion.div>
-
-            <div className="flex items-center gap-2 text-white/40 text-xs uppercase tracking-widest">
-              <Target size={12} />
-              <span>Focus Time</span>
+  const renderFeatureVisual = () => {
+    switch (activeFeature) {
+      case 'planner':
+        return (
+          <div className="relative h-full rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-[#f8729e]/15" />
+            <div className="relative flex flex-col gap-4">
+              {heroSchedule.map((item, index) => (
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-white/10 to-white/0 border border-white/10 flex items-center justify-center text-sm font-semibold">
+                    {item.time}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-white font-semibold">{item.title}</p>
+                      <span className="text-xs text-white/50">{item.duration}</span>
+                    </div>
+                    <p className="text-sm text-white/50">{item.subject}</p>
+                    <div className="mt-3 h-2 w-full rounded-full bg-white/5 overflow-hidden">
+                      <div className={`h-full w-[68%] rounded-full bg-gradient-to-r ${item.accent}`} />
+                    </div>
+                  </div>
+                  <div className="hidden md:flex h-12 w-12 items-center justify-center rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-white/70">
+                    On track
+                  </div>
+                </motion.div>
+              ))}
             </div>
-
-            {/* DotLoader Animation */}
-            <div className="h-16 flex items-center justify-center">
+          </div>
+        )
+      case 'focus':
+        return (
+          <div className="relative h-full rounded-3xl border border-white/10 bg-gradient-to-br from-[#0f0d0b] via-[#121111] to-[#0b0b0c] p-6 overflow-hidden shadow-2xl shadow-black/40">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(246,196,83,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(248,114,158,0.14),transparent_40%)]" />
+            <div className="relative flex flex-col items-center gap-6">
+              <div className="text-center space-y-2">
+                <p className="text-sm uppercase tracking-[0.2em] text-white/50">Focus Session</p>
+                <div className="text-5xl font-semibold font-[var(--font-display)] text-white">24:12</div>
+                <p className="text-white/50 text-sm">Deep work • Navigation locked</p>
+              </div>
               <DotLoader
-                frames={pongGame}
-                duration={200}
-                isPlaying={true}
-                dotClassName="bg-white/20 [&.active]:bg-white size-1.5"
-                className="gap-1"
+                frames={[
+                  [2, 5, 10, 13, 18, 22],
+                  [5, 8, 12, 15, 20, 24],
+                  [8, 12, 16, 20, 24, 28],
+                  [5, 8, 12, 15, 20, 24],
+                ]}
+                duration={260}
+                isPlaying
+                dotClassName="bg-white/20 [&.active]:bg-white size-2"
+                className="gap-2"
               />
-            </div>
-          </div>
-        </div>
-      )
-    },
-    {
-      title: "Track",
-      icon: BarChart3,
-      description: "Visualize your progress. Gamified stats and insights to keep you motivated.",
-      color: "from-amber-500 to-orange-500",
-      visual: (
-        <div className="w-full h-full p-8 flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-white/40">
-              <span>Level 5</span>
-              <span>2,450 / 3,000 XP</span>
-            </div>
-            <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: '82%' }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-                className="h-full bg-gradient-to-r from-amber-500 to-orange-600 relative"
-              >
-                <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]" />
-              </motion.div>
-            </div>
-          </div>
-
-          <div className="flex items-end justify-between gap-3 h-32">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
-              const height = [40, 70, 50, 90, 60, 80, 45][i]
-              return (
-                <div key={i} className="flex flex-col items-center gap-2 w-full group">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${height}%` }}
-                    transition={{ delay: i * 0.1, type: "spring" }}
-                    className="w-full bg-white/5 rounded-t-md relative overflow-hidden group-hover:bg-white/10 transition-colors"
+              <div className="w-full grid grid-cols-3 gap-3">
+                {['Ambient cafe', 'No notifications', 'Auto break in 6m'].map((chip) => (
+                  <div
+                    key={chip}
+                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-xs text-white/70"
                   >
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-orange-500/50 group-hover:h-full group-hover:bg-orange-500/20 transition-all duration-300" />
-                  </motion.div>
-                  <span className="text-[10px] text-white/30 font-medium">{day}</span>
+                    {chip}
+                  </div>
+                ))}
+              </div>
+              <div className="w-full flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-[#f8729e]/20 text-[#f8729e] flex items-center justify-center">
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Energy steady</p>
+                    <p className="text-xs text-white/50">Ride the wave • don’t sprint</p>
+                  </div>
                 </div>
-              )
-            })}
+                <span className="text-xs text-white/60">+50 XP</span>
+              </div>
+            </div>
           </div>
-        </div>
-      )
-    }
-  ]
-
-  const personas = {
-    planner: {
-      title: "The Architect",
-      desc: "You love structure. TaskLoom gives you the blueprint to build your academic success, one block at a time.",
-      icon: Brain,
-      gradient: "from-blue-500 to-indigo-500"
-    },
-    focus: {
-      title: "The Deep Diver",
-      desc: "Distractions are your enemy. TaskLoom creates a sanctuary for your mind to explore complex topics without interruption.",
-      icon: Coffee,
-      gradient: "from-emerald-500 to-teal-500"
-    },
-    night: {
-      title: "The Night Owl",
-      desc: "Inspiration strikes at 2 AM. TaskLoom's dark mode and fluid workflow keep up with your late-night bursts of genius.",
-      icon: Moon,
-      gradient: "from-violet-500 to-purple-500"
+        )
+      case 'progress':
+        return (
+          <div className="relative h-full rounded-3xl border border-white/10 bg-white/5 p-6 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#72e7c2]/10 via-transparent to-[#f6c453]/10" />
+            <div className="relative space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.2em] text-white/40">Streak</p>
+                  <p className="text-4xl font-semibold text-white">12 days</p>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 flex items-center gap-2">
+                  <Sparkles size={16} />
+                  Momentum is compounding
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Weekly minutes', value: '486', tone: 'from-[#f6c453] to-[#f29b38]' },
+                  { label: 'Tasks done', value: '7', tone: 'from-[#f29b38] to-[#f8729e]' },
+                  { label: 'Wins logged', value: '4', tone: 'from-[#72e7c2] to-[#8ae6ff]' },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase tracking-wide text-white/40">{stat.label}</p>
+                    <p className="text-2xl font-semibold text-white mt-1">{stat.value}</p>
+                    <div className={`mt-3 h-1.5 w-full rounded-full bg-gradient-to-r ${stat.tone}`} />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                {[
+                  { title: 'Early bird bonus', detail: 'Session started at 07:20', icon: Flame },
+                  { title: 'Task master', detail: '3 of 3 anchors finished', icon: Target },
+                  { title: 'Weekly review ready', detail: 'Reflect on what worked today', icon: ShieldCheck },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+                  >
+                    <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f6c453]">
+                      <item.icon size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="text-xs text-white/50">{item.detail}</p>
+                    </div>
+                    <Check size={16} className="text-[#72e7c2]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      default:
+        return null
     }
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-[#000000] text-white overflow-x-hidden selection:bg-accent-purple/30 font-sans">
-      {/* Ambient Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] opacity-40 mix-blend-screen" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] opacity-40 mix-blend-screen" />
-        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[60%] h-[60%] bg-indigo-900/10 rounded-full blur-[100px] opacity-30" />
-        <div className="absolute inset-0 opacity-20 mix-blend-overlay" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, #000 100%)' }} />
+    <div className="min-h-screen bg-[var(--sand-900)] text-white overflow-hidden relative">
+      {/* Background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(246,196,83,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(248,114,158,0.08),transparent_35%),radial-gradient(circle_at_50%_90%,rgba(114,231,194,0.08),transparent_35%)]" />
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
       </div>
 
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b border-white/5 bg-black/50 supports-[backdrop-filter]:bg-black/20">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-10 h-10 bg-gradient-to-br from-white to-white/80 rounded-xl flex items-center justify-center text-black shadow-lg shadow-white/10 group-hover:scale-105 transition-transform duration-300">
-              <Check size={24} strokeWidth={3} />
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-black/30 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#f6c453] via-[#f8729e] to-[#72e7c2] flex items-center justify-center text-black font-semibold shadow-lg shadow-black/30 group-hover:scale-105 transition-transform">
+              <Check size={20} strokeWidth={3} />
             </div>
-            <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">TaskLoom</span>
+            <span className="font-semibold text-lg tracking-tight group-hover:text-white/80 transition-colors">
+              TaskLoom
+            </span>
+          </Link>
+          <div className="hidden md:flex items-center gap-4 text-sm text-white/70">
+            <a href="#product" className="hover:text-white transition-colors">Product</a>
+            <a href="#flow" className="hover:text-white transition-colors">How it works</a>
+            <Link to="/about" className="hover:text-white transition-colors">About</Link>
           </div>
-
-          <div className="flex items-center gap-6">
-            <Link to="/signin" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-              Sign In
-            </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/signin" className="text-sm text-white/70 hover:text-white transition-colors">Sign in</Link>
             <Link to="/signup">
-              <button className="group relative px-6 py-2.5 rounded-full bg-white text-black text-sm font-bold overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent translate-x-[-100%] group-hover:animate-shimmer" />
-                <span className="relative flex items-center gap-2">
-                  Get Started <ArrowRight size={16} />
-                </span>
-              </button>
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black font-semibold shadow-[0_10px_40px_rgba(0,0,0,0.35)] hover:scale-[1.02] transition-transform">
+                Start free
+                <ArrowRight size={16} />
+              </span>
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-40 pb-32 px-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
-          <div className="text-left">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-md"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-purple opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-purple"></span>
-              </span>
-              <span className="text-sm font-medium text-white/80">Reimagined for 2025</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-6xl md:text-8xl font-bold tracking-tight mb-8 leading-[0.9]"
-            >
-              Chaos, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-purple via-accent-pink to-accent-blue animate-gradient-x">Tamed.</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl text-white/60 max-w-xl mb-12 leading-relaxed"
-            >
-              The all-in-one workspace that weaves together your tasks, subjects, and focus into one seamless, intelligent workflow.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-wrap items-center gap-4"
-            >
-              <Link to="/signup">
-                <button className="h-14 px-8 rounded-2xl bg-white text-black font-bold text-lg hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.2)]">
-                  Start for free
-                </button>
-              </Link>
-              <Link to="/about">
-                <button
-                  className="h-14 px-8 rounded-2xl bg-white/5 border border-white/10 text-white font-medium hover:bg-white/10 transition-all flex items-center gap-2 backdrop-blur-md"
-                >
-                  <Sparkles size={18} className="text-accent-purple" />
-                  See how it works
-                </button>
-              </Link>
-            </motion.div>
-          </div>
-
-          {/* 3D Hero Visual */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, rotateY: -20, rotateX: 10 }}
-            animate={{ opacity: 1, scale: 1, rotateY: -10, rotateX: 5 }}
-            transition={{ duration: 1, delay: 0.4, type: "spring" }}
-            className="relative hidden lg:block perspective-1000"
-          >
-            <div className="relative z-10 bg-[#0A0A0A] border border-white/10 rounded-[2rem] p-2 shadow-2xl shadow-purple-500/20 transform transition-transform hover:rotate-0 duration-500">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-[2rem] pointer-events-none" />
-              <div className="bg-black rounded-[1.5rem] overflow-hidden border border-white/5 aspect-[4/3] relative">
-                {/* Mock UI Header */}
-                <div className="h-12 border-b border-white/10 flex items-center px-6 gap-4">
-                  <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+      <main className="relative z-10">
+        {/* Hero */}
+        <section className="pt-32 pb-20 px-6">
+          <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-center">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 shadow-lg shadow-black/30">
+                <Sparkles size={14} />
+                Built for students who plan and do
+              </div>
+              <h1 className="text-5xl md:text-6xl font-[var(--font-display)] font-semibold leading-[1.05] tracking-tight">
+                Plan with clarity.
+                <br />
+                <span className="text-gradient">Study with calm.</span>
+              </h1>
+              <p className="text-lg text-white/70 max-w-2xl">
+                TaskLoom weaves your tasks, subjects, and focus sessions into one warm, dependable workflow. No more chaos—just a rhythm that fits how you actually learn.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link to="/signup">
+                  <span className="inline-flex items-center gap-3 rounded-2xl px-6 py-3 bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black font-semibold shadow-lg shadow-black/25 hover:scale-[1.02] transition-transform">
+                    Start planning free
+                    <ArrowRight size={16} />
+                  </span>
+                </Link>
+                <a href="#product" className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white/80 hover:text-white hover:border-white/30 transition-colors">
+                  See the product
+                </a>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {trustSignals.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 backdrop-blur">
+                    <p className="text-white font-semibold">{item.value}</p>
+                    <p className="text-white/50">{item.label}</p>
                   </div>
-                  <div className="h-6 w-32 bg-white/5 rounded-md ml-4" />
-                </div>
-                {/* Mock UI Body */}
-                <div className="p-6 grid grid-cols-12 gap-6 h-full">
-                  <div className="col-span-3 space-y-4">
-                    <div className="h-8 w-full bg-white/5 rounded-lg" />
-                    <div className="space-y-2">
-                      {[1, 2, 3, 4].map(i => <div key={i} className="h-6 w-full bg-white/5 rounded-md opacity-50" />)}
-                    </div>
-                  </div>
-                  <div className="col-span-9 space-y-6">
-                    <div className="flex gap-4">
-                      <div className="h-32 flex-1 bg-gradient-to-br from-purple-500/20 to-purple-900/20 border border-purple-500/30 rounded-2xl p-4">
-                        <div className="h-8 w-8 rounded-lg bg-purple-500/20 mb-4" />
-                        <div className="h-4 w-24 bg-white/10 rounded mb-2" />
-                        <div className="h-8 w-16 bg-white/20 rounded" />
-                      </div>
-                      <div className="h-32 flex-1 bg-white/5 border border-white/10 rounded-2xl" />
-                      <div className="h-32 flex-1 bg-white/5 border border-white/10 rounded-2xl" />
-                    </div>
-                    <div className="space-y-3">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="h-16 w-full bg-white/5 border border-white/5 rounded-xl flex items-center px-4 gap-4">
-                          <div className="w-5 h-5 rounded-full border-2 border-white/20" />
-                          <div className="h-4 w-48 bg-white/10 rounded" />
-                          <div className="ml-auto h-6 w-16 bg-white/5 rounded-full" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Floating Elements */}
-            <motion.div
-              animate={{ y: [0, -20, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -right-12 top-20 bg-[#111] border border-white/10 p-4 rounded-2xl shadow-xl z-20 backdrop-blur-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center">
-                  <Check size={20} />
-                </div>
-                <div>
-                  <div className="text-sm font-bold">Physics Essay</div>
-                  <div className="text-xs text-white/50">Completed just now</div>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              animate={{ y: [0, 20, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute -left-8 bottom-20 bg-[#111] border border-white/10 p-4 rounded-2xl shadow-xl z-20 backdrop-blur-xl"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                  <Target size={20} />
-                </div>
-                <div>
-                  <div className="text-sm font-bold">Focus Mode</div>
-                  <div className="text-xs text-white/50">25m session started</div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Interactive Feature Showcase */}
-      <section id="features" className="py-32 px-6 relative">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">One app, <span className="text-white/40">infinite possibilities.</span></h2>
-            <div className="flex flex-wrap justify-center gap-4">
-              {features.map((feature, index) => (
-                <button
-                  key={index}
-                  onClick={() => setActiveFeature(index)}
-                  className={cn(
-                    "px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 border",
-                    activeFeature === index
-                      ? "bg-white text-black border-white scale-105"
-                      : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    {(() => {
-                      const Icon = feature.icon
-                      return <Icon size={16} />
-                    })()}
-                    {feature.title}
+            <div className="relative">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="relative rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.18em] text-white/40">Today</p>
+                    <p className="text-xl font-semibold">Steady, not rushed</p>
                   </div>
-                </button>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 flex items-center gap-2">
+                    <Waves size={14} />
+                    Balanced
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {heroSchedule.map((item) => (
+                    <motion.div
+                      key={item.title}
+                      whileHover={{ scale: 1.01, y: -2 }}
+                      className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-4"
+                    >
+                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-white/10 to-white/0 border border-white/10 flex items-center justify-center text-sm font-semibold">
+                        {item.time}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-white font-semibold">{item.title}</p>
+                          <span className="text-xs text-white/50">{item.duration}</span>
+                        </div>
+                        <p className="text-sm text-white/50">{item.subject}</p>
+                        <div className="mt-3 h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                          <div className={`h-full w-[64%] rounded-full bg-gradient-to-r ${item.accent}`} />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs uppercase tracking-wide text-white/50">Focus session</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-semibold text-white">25:00</p>
+                      <span className="text-xs text-white/50">Pomodoro</span>
+                    </div>
+                    <DotLoader
+                      frames={[
+                        [1, 4, 8, 12, 16, 20],
+                        [4, 7, 11, 15, 19, 23],
+                        [7, 11, 15, 19, 23, 27],
+                        [4, 7, 11, 15, 19, 23],
+                      ]}
+                      duration={250}
+                      isPlaying
+                      dotClassName="bg-white/15 [&.active]:bg-white size-1.5"
+                      className="gap-1 mt-2"
+                    />
+                    <div className="mt-3 flex items-center gap-2 text-xs text-white/60">
+                      <Timer size={14} />
+                      Auto-break scheduled
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-col gap-2">
+                    <p className="text-xs uppercase tracking-wide text-white/50">Wins today</p>
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 rounded-full bg-[#f6c453]/20 text-[#f6c453] flex items-center justify-center">
+                        <Flame size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Streak secured</p>
+                        <p className="text-xs text-white/50">12 days and counting</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 rounded-full bg-[#72e7c2]/20 text-[#72e7c2] flex items-center justify-center">
+                        <Target size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Anchors done</p>
+                        <p className="text-xs text-white/50">3/3 priority tasks</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Product */}
+        <section id="product" className="pb-20 px-6">
+          <div className="max-w-7xl mx-auto space-y-10">
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div className="space-y-3">
+                <p className="text-sm uppercase tracking-[0.25em] text-white/40">Product</p>
+                <h2 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold leading-tight">
+                  Everything you need to plan, focus, and finish—beautifully aligned.
+                </h2>
+                <p className="text-white/65 max-w-2xl">
+                  Every interaction—from buttons to session locks—shares one visual language so the whole experience feels cohesive, warm, and intentional.
+                </p>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {featureTabs.map((feature) => {
+                  const Icon = feature.icon
+                  const isActive = activeFeature === feature.id
+                  return (
+                    <button
+                      key={feature.id}
+                      onClick={() => setActiveFeature(feature.id)}
+                      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
+                        isActive
+                          ? 'border-white/30 bg-white/10 text-white shadow-lg shadow-black/20'
+                          : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30 hover:text-white'
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {feature.title}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-10 items-stretch">
+              <div className="space-y-6">
+                <AnimatePresence mode="wait">
+                  {featureTabs.map((feature) => {
+                    if (feature.id !== activeFeature) return null
+                    return (
+                      <motion.div
+                        key={feature.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${feature.accent} flex items-center justify-center text-black shadow-lg shadow-black/20`}>
+                            <feature.icon size={18} />
+                          </div>
+                          <h3 className="text-2xl font-semibold">{feature.title}</h3>
+                        </div>
+                        <p className="text-white/70 leading-relaxed">{feature.description}</p>
+                        <div className="space-y-3">
+                          {feature.highlights.map((item) => (
+                            <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                              <div className="h-8 w-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#72e7c2]">
+                                <Check size={14} />
+                              </div>
+                              <p className="text-white/80">{item}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+              </div>
+
+              <div className="min-h-[460px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeFeature}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.02 }}
+                    transition={{ duration: 0.25 }}
+                    className="h-full"
+                  >
+                    {renderFeatureVisual()}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Flow */}
+        <section id="flow" className="pb-20 px-6">
+          <div className="max-w-7xl mx-auto rounded-[32px] border border-white/10 bg-white/5 p-8 md:p-12 shadow-2xl shadow-black/40">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+              <div>
+                <p className="text-sm uppercase tracking-[0.25em] text-white/40">Flow</p>
+                <h3 className="text-3xl md:text-4xl font-[var(--font-display)] font-semibold mt-2">A simple arc every day</h3>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+                <ShieldCheck size={16} />
+                Navigation locks during focus to protect your flow
+              </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {flowSteps.map((step, index) => (
+                <div
+                  key={step.title}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-5 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-white/5 to-transparent" />
+                  <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${step.tone}`}>
+                    <step.icon size={14} />
+                    Step {index + 1}
+                  </div>
+                  <h4 className="text-xl font-semibold mt-3 mb-2">{step.title}</h4>
+                  <p className="text-white/65 text-sm leading-relaxed">{step.description}</p>
+                </div>
               ))}
             </div>
           </div>
+        </section>
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center bg-white/[0.02] border border-white/5 rounded-[3rem] p-8 md:p-12 backdrop-blur-sm">
-            <div className="space-y-8">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeFeature}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${features[activeFeature].color} flex items-center justify-center mb-6 shadow-lg shadow-white/5`}>
-                    {(() => {
-                      const ActiveIcon = features[activeFeature].icon
-                      return <ActiveIcon className="text-white" size={24} />
-                    })()}
-                  </div>
-                  <h3 className="text-3xl font-bold mb-4">{features[activeFeature].title}</h3>
-                  <p className="text-xl text-white/60 leading-relaxed">
-                    {features[activeFeature].description}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-
-              <div className="pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 text-sm text-white/40 mb-4">
-                  <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                  User favorite
-                </div>
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-black bg-white/10" />
-                  ))}
-                  <div className="w-8 h-8 rounded-full border-2 border-black bg-white/5 flex items-center justify-center text-[10px] font-bold">+2k</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="aspect-square md:aspect-[4/3] bg-black/40 rounded-3xl border border-white/10 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeFeature}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.1 }}
-                  transition={{ duration: 0.4 }}
-                  className="absolute inset-0"
-                >
-                  {features[activeFeature].visual}
-                </motion.div>
-              </AnimatePresence>
+        {/* CTA */}
+        <section className="pb-16 px-6">
+          <div className="max-w-5xl mx-auto rounded-[32px] border border-white/10 bg-gradient-to-r from-[#f6c453]/10 via-[#f8729e]/10 to-[#72e7c2]/10 p-10 text-center shadow-2xl shadow-black/40">
+            <p className="text-sm uppercase tracking-[0.25em] text-white/50">Join the rhythm</p>
+            <h3 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold mt-4 mb-4">
+              Welcome your future self with calmer days.
+            </h3>
+            <p className="text-white/70 max-w-2xl mx-auto mb-8">
+              Start with the core workflow: plan anchors, protect focus, celebrate wins. Everything else stays out of your way.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <Link to="/signup">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white text-black font-semibold px-8 py-3 shadow-lg shadow-black/25 hover:scale-[1.02] transition-transform">
+                  Create my plan
+                  <ArrowRight size={16} />
+                </span>
+              </Link>
+              <Link to="/about" className="inline-flex items-center gap-2 rounded-full border border-white/15 px-8 py-3 text-white/80 hover:text-white hover:border-white/40 transition-colors">
+                See how TaskLoom thinks
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* Personal Style Section */}
-      <section className="py-32 px-6 bg-gradient-to-b from-transparent to-white/[0.02]">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-bold mb-12">Designed for <span className="italic font-serif text-accent-purple">you.</span></h2>
-
-          <div className="grid md:grid-cols-3 gap-4 mb-12">
-            {(Object.keys(personas) as Array<keyof typeof personas>).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPersona(p)}
-                className={cn(
-                  "p-6 rounded-2xl border transition-all duration-300 text-left relative overflow-hidden group",
-                  persona === p
-                    ? "bg-white/10 border-white/20 ring-1 ring-white/20"
-                    : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05]"
-                )}
-              >
-                <div className={cn(
-                  "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-500",
-                  personas[p].gradient,
-                  persona === p ? "opacity-10" : "group-hover:opacity-5"
-                )} />
-                <div className="relative z-10">
-                  <div className="mb-4 text-white/80">
-                    {p === 'planner' && <Brain size={24} />}
-                    {p === 'focus' && <Coffee size={24} />}
-                    {p === 'night' && <Moon size={24} />}
-                  </div>
-                  <div className="font-bold text-lg mb-1">{personas[p].title}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="min-h-[180px] flex items-center justify-center">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={persona}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 md:p-12 relative overflow-hidden w-full"
-              >
-                <div className={cn(
-                  "absolute top-0 left-0 w-full h-1 bg-gradient-to-r",
-                  personas[persona].gradient
-                )} />
-                <motion.p
-                  className="text-2xl md:text-3xl font-medium leading-relaxed text-white/90"
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    visible: { transition: { staggerChildren: 0.015 } },
-                    hidden: {}
-                  }}
-                >
-                  {personas[persona].desc.split("").map((char, index) => (
-                    <motion.span
-                      key={index}
-                      variants={{
-                        hidden: { opacity: 0, y: 5 },
-                        visible: { opacity: 1, y: 0 }
-                      }}
-                    >
-                      {char}
-                    </motion.span>
-                  ))}
-                </motion.p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-32 px-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black to-transparent z-10" />
-        <div className="absolute inset-0 bg-grid-white/[0.02]" />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at center, rgba(139, 92, 246, 0.08) 0%, transparent 70%)' }} />
-
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-5xl md:text-7xl font-bold mb-8 tracking-tight">Ready to <br />level up?</h2>
-          <p className="text-xl text-white/50 mb-12 max-w-2xl mx-auto">
-            Join thousands of students who have already transformed their academic journey with TaskLoom.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/signup" className="w-full sm:w-auto">
-              <button className="w-full sm:w-auto h-14 px-12 rounded-full bg-white text-black font-bold text-lg hover:bg-white/90 transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.3)]">
-                Get Started Now
-              </button>
-            </Link>
-          </div>
-          <p className="mt-6 text-sm text-white/30">No credit card required • Cancel anytime</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t border-white/5 bg-black">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+      <footer className="border-t border-white/5 bg-black/40 backdrop-blur py-8">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white/60">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-black font-bold text-xs">
-              <Check size={14} strokeWidth={3} />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#f6c453] via-[#f8729e] to-[#72e7c2] flex items-center justify-center text-black font-semibold shadow-lg shadow-black/30">
+              <Check size={18} strokeWidth={3} />
             </div>
-            <span className="font-bold text-white/80">TaskLoom</span>
+            TaskLoom
           </div>
-          <div className="text-sm text-white/40">
-            © 2025 TaskLoom. All rights reserved.
+          <div className="flex items-center gap-6">
+            <Link to="/signin" className="hover:text-white">Sign in</Link>
+            <Link to="/about" className="hover:text-white">About</Link>
+            <Link to="/signup" className="hover:text-white">Get started</Link>
           </div>
-          <div className="flex gap-6">
-            <a href="#" className="text-white/40 hover:text-white transition-colors"><Users size={20} /></a>
-            <a href="#" className="text-white/40 hover:text-white transition-colors"><Shield size={20} /></a>
-          </div>
+          <p>© 2025 TaskLoom. Study calmly.</p>
         </div>
       </footer>
     </div>

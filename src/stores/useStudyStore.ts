@@ -130,7 +130,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         `Study session: ${session.durationMinutes} minutes`
       )
       // Update daily goal
-      await gamificationStore.createOrUpdateTodayGoal(session.durationMinutes, 0, 0)
+      await gamificationStore.createOrUpdateTodayGoal(session.durationMinutes, 0)
 
       // Award streak bonus if applicable
       get().calculateStats()

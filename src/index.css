@@ -1,11 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --sand-900: #0c0b0a;
+    --sand-800: #161513;
+    --sand-700: #1f1d1a;
+    --glow-amber: #f6c453;
+    --glow-rose: #f8729e;
+    --glow-mint: #72e7c2;
+    --font-sans: 'Manrope', 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    --font-display: 'Space Grotesk', 'Manrope', system-ui, -apple-system, sans-serif;
+  }
+
   body {
-    @apply bg-black text-white antialiased;
+    @apply text-white antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(120% 60% at 20% 10%, rgba(248, 114, 158, 0.12), transparent 45%),
+      radial-gradient(120% 60% at 80% 0%, rgba(246, 196, 83, 0.18), transparent 45%),
+      radial-gradient(140% 70% at 50% 90%, rgba(114, 231, 194, 0.1), transparent 45%),
+      var(--sand-900);
+    color-scheme: dark;
   }
 
   html {
@@ -19,9 +39,10 @@
 }
 
 @layer components {
+
   /* Surface Components */
   .surface-glass {
-    @apply bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/[0.08];
+    @apply glass;
   }
 
   .surface-glass-hover {
@@ -29,12 +50,12 @@
   }
 
   .surface-elevated {
-    @apply bg-[#111111] border border-white/[0.08];
+    @apply bg-dark-900 border border-white/[0.08];
   }
 
   /* Glass Effect - Primary glassmorphism utility */
   .glass {
-    @apply bg-[#0A0A0A] border border-white/[0.08] backdrop-blur-xl;
+    @apply bg-black/40 border border-white/[0.08] backdrop-blur-xl;
   }
 
   /* Card Styles */
@@ -54,21 +75,21 @@
 
   .btn-primary {
     @apply btn bg-white text-black;
-    @apply hover:bg-white/90 hover:shadow-lg;
-    @apply shadow-[0_1px_3px_rgba(0,0,0,0.3)];
+    @apply hover:bg-zinc-200 hover:shadow-lg hover:scale-[1.02];
+    @apply shadow-[0_1px_3px_#0000004d];
     @apply focus-ring;
   }
 
   .btn-primary-accent {
     @apply btn text-white relative;
-    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-    @apply hover:shadow-[0_0_30px_rgba(139,92,246,0.3)];
+    background: linear-gradient(135deg, #f6c453 0%, #f8729e 50%, #72e7c2 100%);
+    @apply hover:shadow-[0_0_30px_rgba(248,114,158,0.4)];
   }
 
   .btn-primary-accent::before {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%);
+    background: linear-gradient(135deg, #fbe7b5 0%, #fca5d3 50%, #a9f5e1 100%);
   }
 
   .btn-primary-accent:hover::before {
@@ -100,10 +121,10 @@
 
   /* Input Styles */
   .input {
-    @apply w-full px-4 py-3.5 bg-white/[0.04] border border-white/10 rounded-xl;
-    @apply text-white placeholder-white/40 transition-all duration-300;
-    @apply focus:outline-none focus:bg-white/[0.08] focus:border-white/30;
-    @apply focus:ring-2 focus:ring-white/10;
+    @apply w-full px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-xl;
+    @apply text-white placeholder-white/30 transition-all duration-300;
+    @apply focus:outline-none focus:bg-white/[0.06] focus:border-white/20;
+    @apply focus:ring-2 focus:ring-white/5;
   }
 
   .input-group {
@@ -135,7 +156,7 @@
 
   /* Text Styles */
   .text-gradient {
-    @apply bg-gradient-to-r from-accent-purple via-accent-blue to-accent-pink bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] bg-clip-text text-transparent;
   }
 
   .text-gradient-purple {
@@ -143,18 +164,22 @@
   }
 
   .heading-1 {
+    font-family: var(--font-display);
     @apply text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight;
   }
 
   .heading-2 {
+    font-family: var(--font-display);
     @apply text-4xl md:text-5xl font-bold tracking-tight;
   }
 
   .heading-3 {
+    font-family: var(--font-display);
     @apply text-3xl md:text-4xl font-bold tracking-tight;
   }
 
   .heading-4 {
+    font-family: var(--font-display);
     @apply text-2xl md:text-3xl font-bold tracking-tight;
   }
 
@@ -227,6 +252,7 @@
 }
 
 @layer utilities {
+
   /* Spacing utilities */
   .section-padding {
     @apply px-6 md:px-12 py-20 md:py-28;
@@ -259,9 +285,12 @@
   }
 
   @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0px);
     }
+
     50% {
       transform: translateY(-10px);
     }
@@ -271,6 +300,7 @@
     0% {
       transform: translateX(-100%);
     }
+
     100% {
       transform: translateX(100%);
     }
@@ -284,6 +314,7 @@
     0% {
       transform: rotate(0deg);
     }
+
     100% {
       transform: rotate(360deg);
     }
@@ -295,15 +326,13 @@
     inset: -2px;
     border-radius: inherit;
     padding: 2px;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0deg,
-      transparent 60deg,
-      rgba(255, 255, 255, 0.8) 90deg,
-      rgba(255, 255, 255, 0.4) 120deg,
-      transparent 150deg,
-      transparent 360deg
-    );
+    background: conic-gradient(from 0deg,
+        transparent 0deg,
+        transparent 60deg,
+        rgba(255, 255, 255, 0.8) 90deg,
+        rgba(255, 255, 255, 0.4) 120deg,
+        transparent 150deg,
+        transparent 360deg);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: exclude;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);

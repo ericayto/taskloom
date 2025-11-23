@@ -8,12 +8,12 @@ export default {
     extend: {
       colors: {
         dark: {
-          950: '#000000',
-          900: '#0a0a0a',
-          800: '#0f0f0f',
-          700: '#151515',
-          600: '#1a1a1a',
-          500: '#242424',
+          950: '#09090b', // Zinc 950
+          900: '#18181b', // Zinc 900
+          800: '#27272a', // Zinc 800
+          700: '#3f3f46', // Zinc 700
+          600: '#52525b', // Zinc 600
+          500: '#71717a', // Zinc 500
         },
         accent: {
           purple: {
@@ -34,8 +34,8 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'Roboto', 'sans-serif'],
-        display: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Manrope"', '"Space Grotesk"', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Space Grotesk"', '"Manrope"', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'display-1': ['4.5rem', { lineHeight: '1', letterSpacing: '-0.02em' }],

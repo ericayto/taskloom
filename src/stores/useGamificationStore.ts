@@ -29,7 +29,6 @@ interface GamificationState {
   createOrUpdateTodayGoal: (
     studyMinutes: number,
     tasksCompleted: number,
-    flashcardsReviewed: number
   ) => Promise<void>
 }
 
@@ -143,8 +142,6 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
           studyMinutesActual: 0,
           tasksCompletedGoal: 3,
           tasksCompletedActual: 0,
-          flashcardsReviewedGoal: 20,
-          flashcardsReviewedActual: 0,
           completed: false,
           createdAt: new Date(),
         }
@@ -172,8 +169,7 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
       // Check if goal is completed
       const isCompleted =
         updatedGoal.studyMinutesActual >= updatedGoal.studyMinutesGoal &&
-        updatedGoal.tasksCompletedActual >= updatedGoal.tasksCompletedGoal &&
-        updatedGoal.flashcardsReviewedActual >= updatedGoal.flashcardsReviewedGoal
+        updatedGoal.tasksCompletedActual >= updatedGoal.tasksCompletedGoal
 
       updatedGoal.completed = isCompleted
 
@@ -187,7 +183,6 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
   createOrUpdateTodayGoal: async (
     studyMinutes,
     tasksCompleted,
-    flashcardsReviewed
   ) => {
     try {
       const { dailyGoals } = get()
@@ -202,8 +197,6 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
         studyMinutesActual: (todayGoal.studyMinutesActual || 0) + studyMinutes,
         tasksCompletedActual:
           (todayGoal.tasksCompletedActual || 0) + tasksCompleted,
-        flashcardsReviewedActual:
-          (todayGoal.flashcardsReviewedActual || 0) + flashcardsReviewed,
       })
     } catch (error) {
       console.error('Failed to create or update today goal:', error)

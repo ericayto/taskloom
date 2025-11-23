@@ -4,9 +4,11 @@ import { useApp } from '../hooks/useApp'
 import Layout from '../components/Layout'
 import { getDaysUntil, formatDuration } from '../utils/helpers'
 import { useMemo, useEffect, useRef } from 'react'
+import { useStudyStore } from '../stores/useStudyStore'
 
 const Overview = () => {
   const { tasks, studyBlocks, subjects, stats, loading, user } = useApp()
+  const { currentSessionStatus } = useStudyStore()
   const timelineRef = useRef<HTMLDivElement>(null)
   const currentTimeRef = useRef<HTMLDivElement>(null)
 
@@ -127,18 +129,27 @@ const Overview = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div>
-          <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            {getGreeting()}
-          </h2>
-          <p className="text-white/40 text-lg">
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/70 mb-3">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2]" />
+              Your day in one view
+            </div>
+            <h2 className="text-4xl font-bold text-white mb-1 tracking-tight">
+              {getGreeting()}
+            </h2>
+            <p className="text-white/50 text-lg">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 shadow-lg shadow-black/30">
+            Navigation locks are {currentSessionStatus === 'active' ? 'on' : 'off'} • Focus studio ready
+          </div>
         </div>
       </motion.header>
 

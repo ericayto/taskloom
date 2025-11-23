@@ -72,18 +72,22 @@ const Stats = () => {
     <Layout>
       {/* Header */}
       <motion.header
-        className="bg-dark-800/50 backdrop-blur-xl border-b border-white/5 px-8 py-6"
+        className="px-8 py-8"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
         <div className="flex items-center justify-between">
           <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/70 mb-3">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2]" />
+              Momentum view
+            </div>
             <h2 className="text-3xl font-bold text-white mb-1">Profile & Stats</h2>
-            <p className="text-white/60">Track your progress and compete with friends</p>
+            <p className="text-white/60">Track your progress and share a friendly leaderboard</p>
           </div>
           <motion.button
             onClick={() => setShowAddFriend(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black rounded-full font-semibold shadow-lg shadow-black/25 hover:scale-[1.02] transition-transform"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

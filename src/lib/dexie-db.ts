@@ -10,9 +10,6 @@ import {
   FocusSession,
   WeeklyReview,
   AppSettings,
-  Deck,
-  Flashcard,
-  FlashcardReview,
   UnlockedAchievement,
   DailyGoal,
   XPEvent,
@@ -29,9 +26,6 @@ export class TaskLoomDatabase extends Dexie {
   focusSessions!: Table<FocusSession, string>
   weeklyReviews!: Table<WeeklyReview, string>
   settings!: Table<AppSettings & { id: string }, string>
-  decks!: Table<Deck, string>
-  flashcards!: Table<Flashcard, string>
-  flashcardReviews!: Table<FlashcardReview, string>
   xpEvents!: Table<XPEvent, string>
   unlockedAchievements!: Table<UnlockedAchievement, string>
   dailyGoals!: Table<DailyGoal, string>
@@ -51,9 +45,6 @@ export class TaskLoomDatabase extends Dexie {
       focusSessions: 'id, startTime, subjectId',
       weeklyReviews: 'id, weekStart',
       settings: 'id',
-      decks: 'id, parentDeckId, subjectId, topicId',
-      flashcards: 'id, deckId, nextReviewDate, suspended',
-      flashcardReviews: 'id, flashcardId, deckId, reviewedAt',
     })
 
     // Version 4: Add gamification tables
@@ -68,9 +59,6 @@ export class TaskLoomDatabase extends Dexie {
       focusSessions: 'id, startTime, subjectId',
       weeklyReviews: 'id, weekStart',
       settings: 'id',
-      decks: 'id, parentDeckId, subjectId, topicId',
-      flashcards: 'id, deckId, nextReviewDate, suspended',
-      flashcardReviews: 'id, flashcardId, deckId, reviewedAt',
       xpEvents: 'id, createdAt, type',
       unlockedAchievements: 'id, achievementId, unlockedAt',
       dailyGoals: 'id, date',
@@ -84,6 +72,26 @@ export class TaskLoomDatabase extends Dexie {
           user.level = 0
         }
       })
+    })
+
+    // Version 5: Remove legacy flashcard tables
+    this.version(5).stores({
+      users: 'id',
+      subjects: 'id, createdAt',
+      exams: 'id, subjectId, date',
+      topics: 'id, subjectId',
+      resources: 'id, subjectId',
+      tasks: 'id, dueDate, status',
+      studyBlocks: 'id, date',
+      focusSessions: 'id, startTime, subjectId',
+      weeklyReviews: 'id, weekStart',
+      settings: 'id',
+      xpEvents: 'id, createdAt, type',
+      unlockedAchievements: 'id, achievementId, unlockedAt',
+      dailyGoals: 'id, date',
+      decks: null as any,
+      flashcards: null as any,
+      flashcardReviews: null as any,
     })
   }
 }
@@ -218,110 +226,6 @@ export const db = {
   async updateSettings(settings: Partial<AppSettings>): Promise<void> {
     const current = await this.getSettings()
     await dexieDb.settings.put({ id: 'default', ...current, ...settings })
-  },
-
-  // Decks
-  async getDecks(): Promise<Deck[]> {
-    return dexieDb.decks.toArray()
-  },
-
-  async getDecksByParent(parentDeckId: string): Promise<Deck[]> {
-    return dexieDb.decks.where('parentDeckId').equals(parentDeckId).toArray()
-  },
-
-  async getTopLevelDecks(): Promise<Deck[]> {
-    const allDecks = await dexieDb.decks.toArray()
-    return allDecks.filter((deck) => !deck.parentDeckId)
-  },
-
-  // Flashcards
-  async getFlashcards(): Promise<Flashcard[]> {
-    return dexieDb.flashcards.toArray()
-  },
-
-  async getFlashcardsByDeck(deckId: string, includeSubdecks = false): Promise<Flashcard[]> {
-    if (!includeSubdecks) {
-      return dexieDb.flashcards.where('deckId').equals(deckId).toArray()
-    }
-
-    // Get all subdecks recursively
-    const deckIds = await this.getAllDeckIds(deckId)
-    const allCards = await dexieDb.flashcards.toArray()
-    return allCards.filter((card) => deckIds.includes(card.deckId))
-  },
-
-  async getAllDeckIds(deckId: string): Promise<string[]> {
-    const ids = [deckId]
-    const subdecks = await this.getDecksByParent(deckId)
-
-    for (const subdeck of subdecks) {
-      const subIds = await this.getAllDeckIds(subdeck.id)
-      ids.push(...subIds)
-    }
-
-    return ids
-  },
-
-  async getFlashcardsDueForReview(deckId?: string): Promise<Flashcard[]> {
-    const allCards = deckId
-      ? await this.getFlashcardsByDeck(deckId, true)
-      : await dexieDb.flashcards.toArray()
-
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-
-    return allCards.filter((card) => {
-      if (card.suspended) return false
-      const reviewDate = new Date(card.nextReviewDate)
-      reviewDate.setHours(0, 0, 0, 0)
-      return reviewDate <= now
-    })
-  },
-
-  async getFlashcardReviews(flashcardId: string): Promise<FlashcardReview[]> {
-    return dexieDb.flashcardReviews
-      .where('flashcardId')
-      .equals(flashcardId)
-      .toArray()
-  },
-
-  async getFlashcardReviewsForToday(): Promise<FlashcardReview[]> {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    const allReviews = await dexieDb.flashcardReviews.toArray()
-    return allReviews.filter((review) => {
-      const reviewDate = new Date(review.reviewedAt)
-      return reviewDate >= today && reviewDate < tomorrow
-    })
-  },
-
-  async resetDeckProgress(deckId: string): Promise<void> {
-    const cards = await this.getFlashcardsByDeck(deckId, true)
-    const now = new Date()
-
-    await dexieDb.transaction('rw', dexieDb.flashcards, async () => {
-      for (const card of cards) {
-        const resetCard: Flashcard = {
-          ...card,
-          easeFactor: 2.5,
-          interval: 0,
-          repetitions: 0,
-          nextReviewDate: now,
-          lastReviewedAt: undefined,
-        }
-        await dexieDb.flashcards.put(resetCard)
-      }
-    })
-  },
-
-  async suspendCard(cardId: string, suspended: boolean): Promise<void> {
-    const card = await dexieDb.flashcards.get(cardId)
-    if (card) {
-      await dexieDb.flashcards.put({ ...card, suspended })
-    }
   },
 
   // Generic CRUD operations (for compatibility)

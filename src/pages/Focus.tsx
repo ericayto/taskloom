@@ -2,11 +2,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../hooks/useApp'
 import Layout from '../components/Layout'
 import { useState, useEffect, useRef } from 'react'
-import { formatDuration } from '../utils/helpers'
+
 import { DotLoader } from '../components/ui/dot-loader'
 import { CustomSelect } from '../components/ui/custom-select'
+
+
 import { TaskSearchSelect } from '../components/ui/task-search-select'
-import { AlertTriangle, Clock, Play, Square, Plus, Save, RotateCcw, Coffee, Minus, BarChart2, Trash2, X, Edit2, Zap } from 'lucide-react'
+import { Clock, Coffee, Minus, BarChart2, Play, Plus, Square, AlertTriangle, Save, RotateCcw, X, Zap, Edit2, Trash2 } from 'lucide-react'
 import { useStudyStore } from '../stores/useStudyStore'
 import { format } from 'date-fns'
 
@@ -39,10 +41,9 @@ const Focus = () => {
     subjects,
     settings,
     addFocusSession,
-    updateTask,
   } = useApp()
 
-  const { focusSessions, deleteFocusSession, updateFocusSession, stats, currentSessionStatus, setSessionStatus } = useStudyStore()
+  const { focusSessions, updateFocusSession, deleteFocusSession, stats, currentSessionStatus, setSessionStatus } = useStudyStore()
 
   // State
   // Use global session status instead of local state
@@ -72,9 +73,8 @@ const Focus = () => {
   // Settings
   const focusDuration = (settings?.pomodoroDuration || 25) * 60
   const shortBreakDuration = (settings?.shortBreakDuration || 5) * 60
-  const longBreakDuration = (settings?.longBreakDuration || 15) * 60
-
   const pendingTasks = tasks.filter((t) => t.status === 'pending' || t.status === 'in-progress')
+
 
   // Timer Logic
   useEffect(() => {
@@ -235,20 +235,24 @@ const Focus = () => {
   return (
     <Layout>
       <motion.header
-        className="bg-dark-800/50 backdrop-blur-xl border-b border-white/5 px-8 py-6 flex justify-between items-center"
+        className="px-8 py-8 flex justify-between items-center"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
         <div>
-          <h2 className="text-3xl font-bold text-white mb-1">Focus</h2>
-          <p className="text-white/60">Deep work session</p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/70 mb-3">
+            <span className="h-2 w-2 rounded-full bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2]" />
+            Navigation locks on during sessions
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-1">Focus studio</h2>
+          <p className="text-white/60">Deep work with ambient cues and timers</p>
         </div>
         <button
           onClick={() => setShowStats(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-colors text-sm font-medium border border-white/5"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black rounded-full text-sm font-semibold shadow-lg shadow-black/25 hover:scale-[1.02] transition-transform"
         >
           <BarChart2 size={16} />
-          Focus Stats
+          Focus stats
         </button>
       </motion.header>
 
@@ -259,7 +263,7 @@ const Focus = () => {
           <div className="flex flex-col items-center justify-center p-12 glass rounded-3xl relative overflow-hidden h-full max-h-[600px]">
             {/* Background decoration */}
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-accent-purple/5 rounded-full blur-[100px]" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,rgba(246,196,83,0.12),transparent_60%)] rounded-full blur-[100px]" />
             </div>
 
             <div className="relative z-10 text-center flex flex-col items-center justify-center h-full w-full">
@@ -391,8 +395,8 @@ const Focus = () => {
                           key={level}
                           onClick={() => setEnergyLevel(level)}
                           className={`py-2 rounded-lg text-sm font-medium capitalize transition-all border ${energyLevel === level
-                              ? 'bg-white text-black border-white'
-                              : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
+                            ? 'bg-white text-black border-white'
+                            : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
                             }`}
                         >
                           {level}
@@ -404,7 +408,7 @@ const Focus = () => {
 
                 <button
                   onClick={handleStart}
-                  className="w-full py-4 bg-white text-black rounded-2xl font-bold text-lg hover:bg-white/90 transition-all flex items-center justify-center gap-3 shadow-lg shadow-white/5 group"
+                  className="w-full py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black transition-transform hover:scale-[1.01] flex items-center justify-center gap-3 shadow-lg shadow-black/25 group"
                 >
                   <Play size={20} className="fill-black" />
                   Start Session
@@ -442,8 +446,8 @@ const Focus = () => {
                   <button
                     onClick={isActive ? handlePause : handleResume}
                     className={`py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${isActive
-                        ? 'bg-white/5 text-white hover:bg-white/10 border border-white/10'
-                        : 'bg-white text-black hover:bg-white/90'
+                      ? 'bg-white/5 text-white hover:bg-white/10 border border-white/10'
+                      : 'bg-white text-black hover:bg-white/90'
                       }`}
                   >
                     {isActive ? <span className="flex items-center gap-2">⏸ Pause</span> : <span className="flex items-center gap-2"><Play size={18} className="fill-current" /> Resume</span>}
@@ -617,8 +621,8 @@ const Focus = () => {
                               </span>
                               {session.energyLevel && (
                                 <span className={`px-2 py-0.5 rounded-full text-xs capitalize flex items-center gap-1 ${session.energyLevel === 'high' ? 'bg-green-500/10 text-green-400' :
-                                    session.energyLevel === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
-                                      'bg-red-500/10 text-red-400'
+                                  session.energyLevel === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
+                                    'bg-red-500/10 text-red-400'
                                   }`}>
                                   <Zap size={10} />
                                   {session.energyLevel} Energy

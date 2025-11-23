@@ -1,7 +1,7 @@
 import { useGamificationStore } from '../stores/useGamificationStore'
 import { useStudyStore } from '../stores/useStudyStore'
 import { useTasksStore } from '../stores/useTasksStore'
-import { useFlashcardStore } from '../stores/useFlashcardStore'
+
 import { useToastStore } from '../stores/useToastStore'
 import {
   ACHIEVEMENTS,
@@ -53,7 +53,7 @@ export async function checkAndUnlockAchievements(): Promise<void> {
 async function buildAchievementContext(): Promise<AchievementCheckContext> {
   const studyStore = useStudyStore.getState()
   const tasksStore = useTasksStore.getState()
-  const flashcardStore = useFlashcardStore.getState()
+
 
   // Get all focus sessions
   const allSessions = studyStore.focusSessions
@@ -88,8 +88,7 @@ async function buildAchievementContext(): Promise<AchievementCheckContext> {
     (t) => t.status === 'completed'
   ).length
 
-  // Count flashcard reviews
-  const totalFlashcardsReviewed = flashcardStore.flashcardReviews.length
+
 
   return {
     totalSessions: allSessions.length,
@@ -97,7 +96,7 @@ async function buildAchievementContext(): Promise<AchievementCheckContext> {
     weeklyMinutes,
     totalMinutes,
     totalTasksCompleted,
-    totalFlashcardsReviewed,
+
     hasEarlyBirdSession,
     hasNightOwlSession,
   }
@@ -105,7 +104,7 @@ async function buildAchievementContext(): Promise<AchievementCheckContext> {
 
 /**
  * Hook to automatically check achievements after certain actions
- * Call this after completing tasks, sessions, or flashcard reviews
+ * Call this after completing tasks or focus sessions
  */
 export function triggerAchievementCheck(): void {
   // Use setTimeout to avoid blocking the UI

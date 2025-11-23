@@ -79,13 +79,7 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
     badge: '✅',
     category: 'task',
   },
-  'flashcard-pro': {
-    id: 'flashcard-pro',
-    name: 'Flashcard Pro',
-    description: 'Review 500 flashcards',
-    badge: '🎴',
-    category: 'flashcard',
-  },
+
 }
 
 // XP Award Amounts
@@ -94,7 +88,7 @@ export const XP_AMOUNTS = {
   TASK_MEDIUM_PRIORITY: 25,
   TASK_HIGH_PRIORITY: 50,
   STUDY_MINUTE: 5,
-  FLASHCARD_REVIEW: 5,
+
   STREAK_DAILY_BONUS: 25,
 }
 
@@ -117,10 +111,7 @@ export function calculateSessionXP(durationMinutes: number): number {
   return durationMinutes * XP_AMOUNTS.STUDY_MINUTE
 }
 
-// Calculate XP for reviewing flashcards
-export function calculateFlashcardXP(cardsReviewed: number): number {
-  return cardsReviewed * XP_AMOUNTS.FLASHCARD_REVIEW
-}
+
 
 // Calculate level from total XP
 export function calculateLevel(totalXP: number): number {
@@ -159,7 +150,7 @@ export interface AchievementCheckContext {
   weeklyMinutes: number
   totalMinutes: number
   totalTasksCompleted: number
-  totalFlashcardsReviewed: number
+
   hasEarlyBirdSession: boolean
   hasNightOwlSession: boolean
 }
@@ -191,8 +182,7 @@ export function checkAchievementUnlock(
       return context.hasNightOwlSession
     case 'task-master':
       return context.totalTasksCompleted >= 50
-    case 'flashcard-pro':
-      return context.totalFlashcardsReviewed >= 500
+
     default:
       return false
   }

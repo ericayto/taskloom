@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { ArrowRight, Check, Lock } from 'lucide-react'
 
 const SignIn = () => {
   const navigate = useNavigate()
@@ -15,86 +15,104 @@ const SignIn = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6 relative overflow-hidden selection:bg-accent-purple/30">
-      {/* Background Gradients */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent-purple/5 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent-blue/5 rounded-full blur-[120px] opacity-50" />
+    <div className="min-h-screen bg-[var(--sand-900)] flex items-center justify-center px-6 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(246,196,83,0.12),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(248,114,158,0.12),transparent_35%),radial-gradient(circle_at_50%_90%,rgba(114,231,194,0.12),transparent_35%)]" />
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
       </div>
 
-      {/* Back button */}
       <motion.div
-        className="absolute top-8 left-8"
-        initial={{ x: -20, opacity: 0 }}
+        className="absolute top-8 left-8 text-sm text-white/70 hover:text-white transition-colors"
+        initial={{ x: -12, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
       >
-        <Link to="/">
-          <button className="text-white/40 hover:text-white transition-colors text-sm flex items-center gap-2">
-            <span>←</span> Back
-          </button>
+        <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur hover:border-white/30">
+          ← Back home
         </Link>
       </motion.div>
 
-      {/* Sign in form */}
       <motion.div
-        className="relative z-10 w-full max-w-md"
+        className="relative z-10 w-full max-w-5xl grid lg:grid-cols-2 gap-10 items-center"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl shadow-black/50">
-          <div className="mb-8 text-center">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-black font-bold mx-auto mb-6">
-              <Check size={24} strokeWidth={3} />
-            </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
-            <p className="text-white/40">Sign in to continue to TaskLoom</p>
+        <div className="hidden lg:block space-y-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+            <Lock size={14} /> Your flow, protected
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.05] focus:border-white/20 transition-all"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Password</label>
-                <a href="#" className="text-xs text-white/40 hover:text-white transition-colors">Forgot?</a>
+          <h1 className="text-4xl font-[var(--font-display)] font-semibold leading-tight">
+            Welcome back. <br /> Pick up your rhythm.
+          </h1>
+          <p className="text-white/70 max-w-xl">
+            Sign in to keep your anchors, focus sessions, and streaks in sync. Everything matches the new TaskLoom look—calm, warm, and intentional.
+          </p>
+          <div className="flex gap-3 flex-wrap">
+            {['Navigation locks during focus', 'Gradient language across the app', 'Daily goals tied to tasks + time'].map((item) => (
+              <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 flex items-center gap-2">
+                <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black flex items-center justify-center text-xs font-semibold shadow-black/30 shadow-md">
+                  <Check size={14} />
+                </div>
+                {item}
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.05] focus:border-white/20 transition-all"
-                placeholder="••••••••"
-                required
-              />
+            ))}
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-md ml-auto">
+          <div className="bg-black/60 border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl shadow-black/50 backdrop-blur-xl">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#f6c453] via-[#f8729e] to-[#72e7c2] rounded-2xl flex items-center justify-center text-black font-semibold shadow-black/30 shadow-lg">
+                <Check size={18} strokeWidth={3} />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/50">TaskLoom</p>
+                <h2 className="text-xl font-semibold text-white">Sign in</h2>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 bg-white text-black rounded-xl font-medium hover:bg-white/90 transition-all mt-6 shadow-lg shadow-white/5"
-            >
-              Sign In
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-white/60 uppercase tracking-[0.16em]">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
 
-          <div className="mt-8 pt-8 border-t border-white/[0.08] text-center">
-            <p className="text-white/40 text-sm">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-white hover:underline">
-                Sign up
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-white/60 uppercase tracking-[0.16em]">Password</label>
+                  <a href="#" className="text-xs text-white/60 hover:text-white transition-colors">Forgot?</a>
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black font-semibold shadow-lg shadow-black/25 hover:scale-[1.01] transition-transform"
+              >
+                Sign in
+              </button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-white/10 text-center text-sm text-white/60">
+              New here?{' '}
+              <Link to="/signup" className="text-white font-semibold inline-flex items-center gap-1 hover:underline">
+                Create an account <ArrowRight size={14} />
               </Link>
-            </p>
+            </div>
           </div>
         </div>
       </motion.div>

@@ -56,7 +56,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
         `Completed: ${updated.title}`
       )
       // Update daily goal
-      await gamificationStore.createOrUpdateTodayGoal(0, 1, 0)
+      await gamificationStore.createOrUpdateTodayGoal(0, 1)
       // Check for new achievements
       triggerAchievementCheck()
     }

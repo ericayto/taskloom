@@ -138,14 +138,18 @@ const Tasks = () => {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">Tasks</h2>
-            <p className="text-white/40 text-lg">Manage your tasks and assignments</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/70 mb-3">
+              <span className="h-2 w-2 rounded-full bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2]" />
+              Anchors and assignments
+            </div>
+            <h2 className="text-4xl font-bold text-white mb-1 tracking-tight">Tasks</h2>
+            <p className="text-white/50 text-lg">Plan, prioritize, and finish without losing flow.</p>
           </div>
           <motion.button
             onClick={handleAddTask}
-            className="px-6 py-3 bg-white text-black rounded-full font-medium hover:bg-white/90 transition-all shadow-lg shadow-white/5"
+            className="px-6 py-3 bg-gradient-to-r from-[#f6c453] via-[#f8729e] to-[#72e7c2] text-black rounded-full font-semibold hover:scale-[1.02] transition-transform shadow-lg shadow-black/25"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -154,9 +158,9 @@ const Tasks = () => {
         </div>
       </motion.header>
 
-      <div className="flex-1 overflow-hidden flex px-8 pb-8 gap-6">
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row px-8 pb-8 gap-6">
         {/* Left Side - Task List */}
-        <div className="w-1/2 card border-white/[0.08] overflow-hidden flex flex-col p-0">
+        <div className="w-full lg:w-1/2 card border-white/[0.08] overflow-hidden flex flex-col p-0">
           {/* Filter Tabs */}
           <motion.div
             className="p-6 border-b border-white/[0.08] space-y-4"
