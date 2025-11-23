@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, useState } from 'react'
 
 interface DriftingEmojiProps {
   emoji: string

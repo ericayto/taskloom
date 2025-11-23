@@ -1,6 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { AppProvider } from './context/AppContext'
+import { useEffect } from 'react'
+import { useUserStore } from './stores/useUserStore'
+import { useSubjectsStore } from './stores/useSubjectsStore'
+import { useTasksStore } from './stores/useTasksStore'
+import { useStudyStore } from './stores/useStudyStore'
+import { useSettingsStore } from './stores/useSettingsStore'
+import { useFlashcardStore } from './stores/useFlashcardStore'
+import { useGamificationStore } from './stores/useGamificationStore'
 import Landing from './pages/Landing'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
@@ -10,6 +17,33 @@ import Planner from './pages/Planner'
 import Subjects from './pages/Subjects'
 import Focus from './pages/Focus'
 import Review from './pages/Review'
+import About from './pages/About'
+import ToastContainer from './components/ToastContainer'
+
+function StoreInitializer({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Initialize all stores on app mount
+    const initStores = async () => {
+      await Promise.all([
+        useUserStore.getState().loadUser(),
+        useSubjectsStore.getState().loadData(),
+        useTasksStore.getState().loadData(),
+        useStudyStore.getState().loadData(),
+        useSettingsStore.getState().loadSettings(),
+        useFlashcardStore.getState().loadData(),
+        useGamificationStore.getState().loadXPEvents(),
+        useGamificationStore.getState().loadUnlockedAchievements(),
+        useGamificationStore.getState().loadTodayGoal(),
+      ])
+    }
+
+    initStores().catch((error) => {
+      console.error('Failed to initialize stores:', error)
+    })
+  }, [])
+
+  return <>{children}</>
+}
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -26,6 +60,7 @@ function AnimatedRoutes() {
         <Route path="/subjects" element={<Subjects />} />
         <Route path="/focus" element={<Focus />} />
         <Route path="/review" element={<Review />} />
+        <Route path="/about" element={<About />} />
       </Routes>
     </AnimatePresence>
   )
@@ -33,11 +68,12 @@ function AnimatedRoutes() {
 
 function App() {
   return (
-    <AppProvider>
+    <StoreInitializer>
       <Router>
         <AnimatedRoutes />
+        <ToastContainer />
       </Router>
-    </AppProvider>
+    </StoreInitializer>
   )
 }
 

@@ -37,7 +37,7 @@ export const CustomSelect = ({ value, onChange, options, placeholder = 'Select..
       const rect = buttonRef.current.getBoundingClientRect()
       setPosition({
         top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        left: rect.right + window.scrollX - rect.width,
         width: rect.width
       })
     }

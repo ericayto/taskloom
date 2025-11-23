@@ -1,17 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useApp } from '../context/AppContext'
+import { useApp } from '../hooks/useApp'
 import Layout from '../components/Layout'
 import { useState, useMemo } from 'react'
 import { Task } from '../types'
 import { CustomSelect } from '../components/ui/custom-select'
 import { DatePicker } from '../components/ui/date-picker'
+import { CheckSquare, Calendar } from 'lucide-react'
 
 const Tasks = () => {
   const { tasks, subjects, focusSessions, addTask, updateTask, deleteTask } = useApp()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [filter, setFilter] = useState<'pending' | 'completed'>('pending')
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
-  const [editMode, setEditMode] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editData, setEditData] = useState({
     title: '',
     description: '',
@@ -34,49 +35,38 @@ const Tasks = () => {
   }, [selectedTask, focusSessions])
 
   const handleAddTask = async () => {
-    const newTask = await addTask({
+    await addTask({
       title: 'New Task',
       description: '',
       priority: 'medium',
       status: 'pending',
     })
-    if (newTask) {
-      setSelectedTask(newTask)
-      setEditMode(true)
-      setEditData({
-        title: 'New Task',
-        description: '',
-        subjectId: '',
-        dueDate: '',
-        priority: 'medium',
-      })
-    }
+    // Wait a tick for state to update, then select the last task
+    setTimeout(() => {
+      const latestTask = tasks[tasks.length - 1]
+      if (latestTask) {
+        setSelectedTask(latestTask)
+        setEditData({
+          title: latestTask.title,
+          description: latestTask.description || '',
+          subjectId: latestTask.subjectId || '',
+          dueDate: latestTask.dueDate ? new Date(latestTask.dueDate).toISOString().split('T')[0] : '',
+          priority: latestTask.priority,
+        })
+      }
+    }, 100)
   }
 
-  const handleSaveTask = async () => {
-    if (!selectedTask || !editData.title.trim()) return
-
-    await updateTask(selectedTask.id, {
-      title: editData.title,
-      description: editData.description || undefined,
-      subjectId: editData.subjectId || undefined,
-      dueDate: editData.dueDate ? new Date(editData.dueDate) : undefined,
-      priority: editData.priority,
-    })
-
-    setEditMode(false)
-    // Update selectedTask with new data
-    const updatedTask = tasks.find(t => t.id === selectedTask.id)
-    if (updatedTask) setSelectedTask(updatedTask)
-  }
-
-  const handleDeleteTask = async () => {
+  const handleDeleteTask = () => {
     if (!selectedTask) return
-    if (confirm('Are you sure you want to delete this task?')) {
-      await deleteTask(selectedTask.id)
-      setSelectedTask(null)
-      setEditMode(false)
-    }
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDeleteTask = async () => {
+    if (!selectedTask) return
+    await deleteTask(selectedTask.id)
+    setSelectedTask(null)
+    setShowDeleteConfirm(false)
   }
 
   const handleTaskClick = (task: Task) => {
@@ -141,32 +131,21 @@ const Tasks = () => {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-400'
-      case 'in-progress':
-        return 'text-blue-400'
-      default:
-        return 'text-white/60'
-    }
-  }
-
   return (
     <Layout>
       <motion.header
-        className="bg-dark-800/50 backdrop-blur-xl border-b border-white/5 px-8 py-6"
+        className="px-8 py-8"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-1">Tasks ✓</h2>
-            <p className="text-white/60">Manage your tasks and assignments</p>
+            <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">Tasks</h2>
+            <p className="text-white/40 text-lg">Manage your tasks and assignments</p>
           </div>
           <motion.button
             onClick={handleAddTask}
-            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-white font-medium transition-colors"
+            className="px-6 py-3 bg-white text-black rounded-full font-medium hover:bg-white/90 transition-all shadow-lg shadow-white/5"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -175,12 +154,12 @@ const Tasks = () => {
         </div>
       </motion.header>
 
-      <div className="flex-1 overflow-hidden flex">
+      <div className="flex-1 overflow-hidden flex px-8 pb-8 gap-6">
         {/* Left Side - Task List */}
-        <div className="w-1/2 border-r border-white/10 overflow-auto p-8">
+        <div className="w-1/2 card border-white/[0.08] overflow-hidden flex flex-col p-0">
           {/* Filter Tabs */}
           <motion.div
-            className="space-y-4 mb-6"
+            className="p-6 border-b border-white/[0.08] space-y-4"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
           >
@@ -192,10 +171,10 @@ const Tasks = () => {
                 <motion.button
                   key={tab.value}
                   onClick={() => setFilter(tab.value as any)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     filter === tab.value
-                      ? 'bg-white/10 text-white border border-white/10'
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'bg-white text-black'
+                      : 'text-white/40 hover:text-white hover:bg-white/[0.04]'
                   }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -218,12 +197,12 @@ const Tasks = () => {
           </motion.div>
 
           {/* Tasks List */}
-          <div className="space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {filteredTasks.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📝</div>
+              <div className="text-center py-12 flex flex-col items-center justify-center h-full">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 text-2xl">📝</div>
                 <h3 className="text-xl font-bold text-white mb-2">No tasks yet</h3>
-                <p className="text-white/50">Create your first task to get started</p>
+                <p className="text-white/40">Create your first task to get started</p>
               </div>
             ) : (
               filteredTasks.map((task) => {
@@ -235,48 +214,56 @@ const Tasks = () => {
                   <motion.div
                     key={task.id}
                     onClick={() => handleTaskClick(task)}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                    className={`p-4 rounded-xl border cursor-pointer transition-all group ${
                       isSelected
-                        ? 'bg-white/10 border-white/20'
-                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                        ? 'bg-white/[0.08] border-white/[0.1]'
+                        : 'bg-transparent border-transparent hover:bg-white/[0.04]'
                     }`}
-                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-1 h-12 ${getPriorityColor(displayPriority)} rounded-full transition-colors`} />
+                    <div className="flex items-start gap-4">
+                      <div className={`w-1.5 h-1.5 mt-2 rounded-full ${getPriorityColor(displayPriority)} shadow-[0_0_8px_currentColor] opacity-80`} />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-3 mb-1">
                           <motion.button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleToggleComplete(task)
                             }}
-                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                            className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
                               task.status === 'completed'
-                                ? 'bg-green-500 border-green-500'
-                                : 'border-white/30'
+                                ? 'bg-green-500 border-green-500 text-black'
+                                : 'border-white/20 hover:border-white/40'
                             }`}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                           >
                             {task.status === 'completed' && (
-                              <span className="text-white text-xs">✓</span>
+                              <CheckSquare size={12} strokeWidth={3} />
                             )}
                           </motion.button>
                           <h3
-                            className={`text-base font-medium truncate ${
+                            className={`text-base font-medium truncate transition-colors ${
                               task.status === 'completed'
                                 ? 'text-white/40 line-through'
-                                : 'text-white'
+                                : 'text-white group-hover:text-white/90'
                             }`}
                           >
                             {task.title}
                           </h3>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-white/50 ml-7">
-                          {subject && <span>{subject.name}</span>}
-                          {task.dueDate && <span>🗓️ {new Date(task.dueDate).toLocaleDateString()}</span>}
+                        <div className="flex items-center gap-3 text-xs text-white/40 ml-8">
+                          {subject && (
+                            <span className="bg-white/[0.05] px-2 py-0.5 rounded text-white/60">
+                              {subject.name}
+                            </span>
+                          )}
+                          {task.dueDate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar size={12} />
+                              {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -288,128 +275,174 @@ const Tasks = () => {
         </div>
 
         {/* Right Side - Task Details */}
-        <div className="w-1/2 overflow-auto p-8">
+        <div className="w-1/2 card border-white/[0.08] overflow-hidden flex flex-col p-0">
           {selectedTask ? (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-white">Task Details</h3>
+            <div className="flex flex-col h-full">
+              <div className="p-6 border-b border-white/[0.08] flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Task Details</h3>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleDeleteTask}
+                    className="p-2 hover:bg-red-500/10 text-white/40 hover:text-red-400 rounded-lg transition-colors"
+                  >
+                    <span className="sr-only">Delete</span>
+                    🗑️
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Title */}
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Title</label>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Title</label>
                   <input
                     type="text"
                     value={editData.title}
                     onChange={(e) => setEditData({ ...editData, title: e.target.value })}
                     onBlur={() => handleFieldBlur('title')}
                     disabled={selectedTask.status === 'completed'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.05] focus:border-white/20 transition-all text-lg font-medium"
                   />
                 </div>
 
                 {/* Description */}
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Description</label>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Description</label>
                   <textarea
                     value={editData.description}
                     onChange={(e) => setEditData({ ...editData, description: e.target.value })}
                     onBlur={() => handleFieldBlur('description')}
                     disabled={selectedTask.status === 'completed'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    rows={4}
+                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.05] focus:border-white/20 transition-all resize-none min-h-[120px]"
                     placeholder="Add notes about this task..."
                   />
                 </div>
 
-                {/* Subject */}
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Subject</label>
-                  {selectedTask.status === 'completed' ? (
-                    <div className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white/50">
-                      {subjects.find(s => s.id === editData.subjectId)?.name || 'No subject'}
-                    </div>
-                  ) : (
-                    <CustomSelect
-                      value={editData.subjectId}
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Subject */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Subject</label>
+                    {selectedTask.status === 'completed' ? (
+                      <div className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white/50">
+                        {subjects.find(s => s.id === editData.subjectId)?.name || 'No subject'}
+                      </div>
+                    ) : (
+                      <CustomSelect
+                        value={editData.subjectId}
+                        onChange={(value) => {
+                          setEditData({ ...editData, subjectId: value })
+                          setTimeout(() => handleFieldBlur('subjectId'), 0)
+                        }}
+                        options={[
+                          { value: '', label: 'No subject' },
+                          ...subjects.map(s => ({ value: s.id, label: s.name }))
+                        ]}
+                        placeholder="Select subject"
+                      />
+                    )}
+                  </div>
+
+                  {/* Due Date */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Due Date</label>
+                    <DatePicker
+                      value={editData.dueDate}
                       onChange={(value) => {
-                        setEditData({ ...editData, subjectId: value })
-                        setTimeout(() => handleFieldBlur('subjectId'), 0)
+                        setEditData({ ...editData, dueDate: value })
+                        setTimeout(() => handleFieldBlur('dueDate'), 0)
                       }}
-                      options={[
-                        { value: '', label: 'No subject' },
-                        ...subjects.map(s => ({ value: s.id, label: s.name }))
-                      ]}
-                      placeholder="Select subject"
+                      disabled={selectedTask.status === 'completed'}
                     />
-                  )}
+                  </div>
                 </div>
 
-                {/* Due Date */}
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Due Date</label>
-                  <DatePicker
-                    value={editData.dueDate}
-                    onChange={(value) => {
-                      setEditData({ ...editData, dueDate: value })
-                      setTimeout(() => handleFieldBlur('dueDate'), 0)
-                    }}
-                    disabled={selectedTask.status === 'completed'}
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Priority */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Priority</label>
+                    {selectedTask.status === 'completed' ? (
+                      <div className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white/50 capitalize">
+                        {editData.priority}
+                      </div>
+                    ) : (
+                      <CustomSelect
+                        value={editData.priority}
+                        onChange={(value) => {
+                          setEditData({ ...editData, priority: value as any })
+                          setTimeout(() => handleFieldBlur('priority'), 0)
+                        }}
+                        options={[
+                          { value: 'low', label: 'Low' },
+                          { value: 'medium', label: 'Medium' },
+                          { value: 'high', label: 'High' }
+                        ]}
+                        placeholder="Select priority"
+                      />
+                    )}
+                  </div>
 
-                {/* Priority */}
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Priority</label>
-                  {selectedTask.status === 'completed' ? (
-                    <div className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white/50 capitalize">
-                      {editData.priority}
+                  {/* Focus Time */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/40 uppercase tracking-wider">Total Focus Time</label>
+                    <div className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl flex items-center gap-2">
+                      <span className="text-xl">⏱️</span>
+                      <span className="text-white font-bold">{totalFocusTime} min</span>
                     </div>
-                  ) : (
-                    <CustomSelect
-                      value={editData.priority}
-                      onChange={(value) => {
-                        setEditData({ ...editData, priority: value as any })
-                        setTimeout(() => handleFieldBlur('priority'), 0)
-                      }}
-                      options={[
-                        { value: 'low', label: 'Low' },
-                        { value: 'medium', label: 'Medium' },
-                        { value: 'high', label: 'High' }
-                      ]}
-                      placeholder="Select priority"
-                    />
-                  )}
+                  </div>
                 </div>
-
-                {/* Focus Time */}
-                <div>
-                  <label className="block text-white/60 text-sm mb-2">Total Focus Time</label>
-                  <p className="text-white/80 text-2xl font-bold">{totalFocusTime} minutes</p>
-                </div>
-
-                {/* Delete Button */}
-                <motion.button
-                  onClick={handleDeleteTask}
-                  className="w-full py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-white font-medium"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Delete Task
-                </motion.button>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-6xl mb-4">👈</div>
-                <p className="text-white/60">Select a task to view details</p>
-              </div>
+            <div className="flex items-center justify-center h-full flex-col">
+              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 text-4xl">👈</div>
+              <p className="text-white/40 text-lg">Select a task to view details</p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              className="bg-[#111] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-4">
+                <span className="text-xl">🗑️</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Delete Task?</h3>
+              <p className="text-white/60 mb-8 leading-relaxed">
+                Are you sure you want to delete <span className="text-white font-medium">"{selectedTask?.title}"</span>? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteTask}
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors shadow-lg shadow-red-500/20"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </Layout>
   )

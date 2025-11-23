@@ -1,9 +1,9 @@
-import { Task, StudyBlock, Topic, WeeklyReview, FocusSession } from '../types'
-import { startOfWeek, addDays, format } from 'date-fns'
+import { Task, StudyBlock, Topic, FocusSession } from '../types'
+import { startOfWeek, addDays } from 'date-fns'
 
 // Mock AI functions - these would connect to real AI in production
 
-export async function generateTopics(subjectName: string, examBoard?: string): Promise<string[]> {
+export async function generateTopics(subjectName: string): Promise<string[]> {
   // Simulate AI delay
   await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -84,9 +84,7 @@ export async function generateTopics(subjectName: string, examBoard?: string): P
 }
 
 export async function suggestWeeklyPlan(
-  tasks: Task[],
-  existingBlocks: StudyBlock[],
-  availableHours: number = 20
+  tasks: Task[]
 ): Promise<StudyBlock[]> {
   // Simulate AI delay
   await new Promise((resolve) => setTimeout(resolve, 1500))

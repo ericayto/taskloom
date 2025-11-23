@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useApp } from '../context/AppContext'
+import { useApp } from '../hooks/useApp'
 import Layout from '../components/Layout'
 import { useState, useMemo, useEffect } from 'react'
 import { getSubjectColor } from '../utils/helpers'
@@ -9,7 +9,7 @@ import { CustomSelect } from '../components/ui/custom-select'
 import { DatePicker } from '../components/ui/date-picker'
 import { TimePicker } from '../components/ui/time-picker'
 import { SubjectCard } from '../components/ui/subject-card'
-import { Topic, Exam, Resource, TopicConfidence } from '../types'
+import { Exam, Resource, TopicConfidence } from '../types'
 
 const Subjects = () => {
   const {
@@ -21,7 +21,6 @@ const Subjects = () => {
     updateSubject,
     deleteSubject,
     addExam,
-    updateExam,
     deleteExam,
     addTopic,
     addTopics,
@@ -38,11 +37,12 @@ const Subjects = () => {
   const [showAddTopic, setShowAddTopic] = useState(false)
   const [showAddResource, setShowAddResource] = useState(false)
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false)
-  const [editingTopicId, setEditingTopicId] = useState<string | null>(null)
   const [topicGroupFilter, setTopicGroupFilter] = useState<string>('all')
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string; name: string } | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [collapsedTopics, setCollapsedTopics] = useState<Set<string>>(new Set())
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set())
+  const [showDeleteTopicsConfirm, setShowDeleteTopicsConfirm] = useState(false)
   const [showEditSubject, setShowEditSubject] = useState(false)
   const [editingSubject, setEditingSubject] = useState<{
     id: string
@@ -73,12 +73,39 @@ const Subjects = () => {
   })
   const [newExam, setNewExam] = useState({ name: '', date: '', time: '' })
   const [newTopic, setNewTopic] = useState({ name: '', group: '', parentTopicId: '' })
-  const [newResource, setNewResource] = useState({ name: '', type: 'link' as const, url: '' })
+  const [newResource, setNewResource] = useState<{ name: string; type: 'link' | 'file' | 'note' | 'folder'; url: string; parentFolderId: string }>({ name: '', type: 'link', url: '', parentFolderId: '' })
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [resourceSortBy, setResourceSortBy] = useState<'name' | 'type' | 'date'>('name')
+  const [topicSearchQuery, setTopicSearchQuery] = useState('')
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
   const subjectExams = useMemo(
     () => exams.filter((e) => e.subjectId === selectedSubjectId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [exams, selectedSubjectId]
+  )
+
+  const upcomingExams = useMemo(
+    () => subjectExams.filter((e) => {
+      const examDateTime = new Date(e.date)
+      if (e.time) {
+        const [hours, minutes] = e.time.split(':')
+        examDateTime.setHours(parseInt(hours), parseInt(minutes))
+      }
+      return examDateTime.getTime() >= currentTime.getTime()
+    }),
+    [subjectExams, currentTime]
+  )
+
+  const completedExams = useMemo(
+    () => subjectExams.filter((e) => {
+      const examDateTime = new Date(e.date)
+      if (e.time) {
+        const [hours, minutes] = e.time.split(':')
+        examDateTime.setHours(parseInt(hours), parseInt(minutes))
+      }
+      return examDateTime.getTime() < currentTime.getTime()
+    }),
+    [subjectExams, currentTime]
   )
   const subjectTopics = useMemo(
     () => topics.filter((t) => t.subjectId === selectedSubjectId && !t.parentTopicId).sort((a, b) => (a.order || 0) - (b.order || 0)),
@@ -95,15 +122,83 @@ const Subjects = () => {
     [resources, selectedSubjectId]
   )
 
+  const currentFolderResources = useMemo(() => {
+    let filtered = subjectResources.filter((r) =>
+      (currentFolderId ? r.parentFolderId === currentFolderId : !r.parentFolderId)
+    )
+
+    // Sort resources
+    return filtered.sort((a, b) => {
+      switch (resourceSortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'type':
+          // Folders first, then by type
+          if (a.type === 'folder' && b.type !== 'folder') return -1
+          if (a.type !== 'folder' && b.type === 'folder') return 1
+          return a.type.localeCompare(b.type)
+        case 'date':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        default:
+          return 0
+      }
+    })
+  }, [subjectResources, currentFolderId, resourceSortBy])
+
+  const currentFolder = currentFolderId
+    ? resources.find(r => r.id === currentFolderId)
+    : null
+
+  const folderPath = useMemo(() => {
+    const path: Resource[] = []
+    let folderId = currentFolderId
+    while (folderId) {
+      const folder = resources.find(r => r.id === folderId)
+      if (folder) {
+        path.unshift(folder)
+        folderId = folder.parentFolderId || null
+      } else {
+        break
+      }
+    }
+    return path
+  }, [currentFolderId, resources])
+
   const topicGroups = useMemo(() => {
     const groups = new Set(subjectTopics.map(t => t.group).filter(Boolean) as string[])
     return ['all', ...Array.from(groups)]
   }, [subjectTopics])
 
   const filteredTopics = useMemo(() => {
-    if (topicGroupFilter === 'all') return subjectTopics
-    return subjectTopics.filter(t => t.group === topicGroupFilter)
-  }, [subjectTopics, topicGroupFilter])
+    let topics = topicGroupFilter === 'all' ? subjectTopics : subjectTopics.filter(t => t.group === topicGroupFilter)
+
+    // Apply search filter - includes parent topics and subtopics
+    if (topicSearchQuery.trim()) {
+      const query = topicSearchQuery.toLowerCase()
+      // Get all topics (including subtopics) that match
+      const allMatchingTopics = subjectTopics.filter(t =>
+        t.name.toLowerCase().includes(query) ||
+        (t.group && t.group.toLowerCase().includes(query))
+      )
+
+      // For search results, we want to show all matching topics (both parents and children)
+      topics = allMatchingTopics
+    }
+
+    return topics
+  }, [subjectTopics, topicGroupFilter, topicSearchQuery])
+
+  // Calculate topic progress stats
+  const topicStats = useMemo(() => {
+    const total = subjectTopics.length
+    const mastered = subjectTopics.filter(t => t.confidence === 'mastered').length
+    const confident = subjectTopics.filter(t => t.confidence === 'confident').length
+    const moderate = subjectTopics.filter(t => t.confidence === 'moderate').length
+    const struggling = subjectTopics.filter(t => t.confidence === 'struggling').length
+    const notStarted = subjectTopics.filter(t => !t.confidence || t.confidence === 'not-started').length
+
+    return { total, mastered, confident, moderate, struggling, notStarted }
+  }, [subjectTopics])
 
   // Live countdown timer
   useEffect(() => {
@@ -185,6 +280,14 @@ const Subjects = () => {
     setDeleteConfirm(null)
   }
 
+  const confirmDeleteTopics = async () => {
+    for (const topicId of selectedTopics) {
+      await deleteTopic(topicId)
+    }
+    setSelectedTopics(new Set())
+    setShowDeleteTopicsConfirm(false)
+  }
+
   const handleAddExam = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedSubjectId) return
@@ -222,7 +325,7 @@ const Subjects = () => {
     if (!selectedSubject) return
     setIsGeneratingTopics(true)
     try {
-      const generatedTopics = await generateTopics(selectedSubject.name, selectedSubject.examBoard)
+      const generatedTopics = await generateTopics(selectedSubject.name)
       const topicsToAdd = generatedTopics.map((name, index) => ({
         subjectId: selectedSubject.id,
         name,
@@ -234,40 +337,6 @@ const Subjects = () => {
     } finally {
       setIsGeneratingTopics(false)
     }
-  }
-
-  const handleMarkReviewed = async (topicId: string) => {
-    const topic = topics.find(t => t.id === topicId)
-    if (!topic) return
-
-    if (topic.lastReviewed) {
-      // Unmark if already reviewed
-      await updateTopic(topicId, { lastReviewed: undefined })
-    } else {
-      // Mark as reviewed
-      await updateTopic(topicId, { lastReviewed: new Date() })
-    }
-  }
-
-  const handleMoveTopic = async (topicId: string, direction: 'up' | 'down') => {
-    const topic = topics.find(t => t.id === topicId)
-    if (!topic) return
-
-    const siblingTopics = topics
-      .filter(t => t.subjectId === topic.subjectId && t.parentTopicId === topic.parentTopicId)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-
-    const currentIndex = siblingTopics.findIndex(t => t.id === topicId)
-    if (currentIndex === -1) return
-    if (direction === 'up' && currentIndex === 0) return
-    if (direction === 'down' && currentIndex === siblingTopics.length - 1) return
-
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    const topic1 = siblingTopics[currentIndex]
-    const topic2 = siblingTopics[newIndex]
-
-    await updateTopic(topic1.id, { order: topic2.order || 0 })
-    await updateTopic(topic2.id, { order: topic1.order || 0 })
   }
 
   const toggleTopicCollapse = (topicId: string) => {
@@ -290,9 +359,20 @@ const Subjects = () => {
       name: newResource.name,
       type: newResource.type,
       url: newResource.url || undefined,
+      parentFolderId: newResource.parentFolderId || undefined,
     })
-    setNewResource({ name: '', type: 'link', url: '' })
+    setNewResource({ name: '', type: 'link', url: '', parentFolderId: '' })
     setShowAddResource(false)
+  }
+
+  const getResourceIcon = (type: string) => {
+    switch (type) {
+      case 'folder': return '📁'
+      case 'link': return '🔗'
+      case 'file': return '📄'
+      case 'note': return '📝'
+      default: return '📄'
+    }
   }
 
   const handleEditSubject = (subject: typeof subjects[0]) => {
@@ -328,10 +408,10 @@ const Subjects = () => {
   if (selectedSubject) {
     return (
       <Layout>
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <motion.header
-            className="bg-dark-800/50 backdrop-blur-xl border-b border-white/5 px-8 py-6 sticky top-0 z-20"
+            className="bg-dark-800/50 backdrop-blur-xl border-b border-white/5 px-8 py-6 z-20 flex-shrink-0"
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
           >
@@ -363,7 +443,7 @@ const Subjects = () => {
           </motion.header>
 
           {/* Tab Navigation */}
-          <div className="border-b border-white/10 px-8">
+          <div className="border-b border-white/10 px-8 flex-shrink-0">
             <div className="flex gap-6">
               {[
                 { id: 'exams', label: 'Exams', icon: '📝' },
@@ -386,11 +466,11 @@ const Subjects = () => {
             </div>
           </div>
 
-          <div className="p-8 max-w-7xl mx-auto">
+          <div className="flex-1 p-8 max-w-7xl mx-auto flex flex-col overflow-hidden w-full">
             {/* Exams Tab */}
             {activeTab === 'exams' && (
               <motion.div
-                className="space-y-4"
+                className="space-y-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -405,261 +485,394 @@ const Subjects = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {subjectExams.map((exam) => (
-                    <motion.div
-                      key={exam.id}
-                      className="p-4 bg-white/5 border border-white/10 rounded-lg"
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-white font-medium">{exam.name}</h4>
-                        <button
-                          onClick={() => setDeleteConfirm({ type: 'exam', id: exam.id, name: exam.name })}
-                          className="text-white/40 hover:text-red-400 transition-colors text-sm"
+                {/* Upcoming Exams */}
+                {upcomingExams.length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-semibold text-white mb-3">Upcoming</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {upcomingExams.map((exam) => (
+                        <motion.div
+                          key={exam.id}
+                          className="p-4 bg-white/5 border border-white/10 rounded-lg"
+                          whileHover={{ scale: 1.02 }}
                         >
-                          🗑
-                        </button>
-                      </div>
-                      <p className="text-white/60 text-sm">
-                        {new Date(exam.date).toLocaleDateString()}
-                        {exam.time && ` at ${exam.time}`}
-                      </p>
-                      <p className="text-white/80 text-sm mt-1">
-                        ⏱ {getCountdown(exam)}
-                      </p>
-                    </motion.div>
-                  ))}
-                  {subjectExams.length === 0 && (
-                    <p className="text-white/40 text-sm text-center py-8 col-span-full">No exams yet</p>
-                  )}
-                </div>
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="text-white font-medium">{exam.name}</h4>
+                            <button
+                              onClick={() => setDeleteConfirm({ type: 'exam', id: exam.id, name: exam.name })}
+                              className="text-white/40 hover:text-red-400 transition-colors text-sm"
+                            >
+                              🗑
+                            </button>
+                          </div>
+                          <p className="text-white/60 text-sm">
+                            {new Date(exam.date).toLocaleDateString()}
+                            {exam.time && ` at ${exam.time}`}
+                          </p>
+                          <p className="text-white/80 text-sm mt-1">
+                            ⏱ {getCountdown(exam)}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Completed Exams */}
+                {completedExams.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-lg font-semibold text-white/60">Completed</h4>
+                      <button
+                        onClick={async () => {
+                          for (const exam of completedExams) {
+                            await deleteExam(exam.id)
+                          }
+                        }}
+                        className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded text-red-400 text-xs transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {completedExams.map((exam) => (
+                        <motion.div
+                          key={exam.id}
+                          className="p-4 bg-white/5 border border-white/10 rounded-lg opacity-60"
+                          whileHover={{ scale: 1.02, opacity: 0.8 }}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="text-white font-medium">{exam.name}</h4>
+                            <button
+                              onClick={() => setDeleteConfirm({ type: 'exam', id: exam.id, name: exam.name })}
+                              className="text-white/40 hover:text-red-400 transition-colors text-sm"
+                            >
+                              🗑
+                            </button>
+                          </div>
+                          <p className="text-white/60 text-sm">
+                            {new Date(exam.date).toLocaleDateString()}
+                            {exam.time && ` at ${exam.time}`}
+                          </p>
+                          <p className="text-green-400 text-sm mt-1">
+                            ✓ Completed
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {subjectExams.length === 0 && (
+                  <p className="text-white/40 text-sm text-center py-8">No exams yet</p>
+                )}
               </motion.div>
             )}
 
             {/* Topics Tab */}
             {activeTab === 'topics' && (
               <motion.div
-                className="space-y-4"
+                className="flex flex-col h-full"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-white">Topics</h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleGenerateTopics}
-                      disabled={isGeneratingTopics}
-                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors disabled:opacity-50"
-                    >
-                      {isGeneratingTopics ? 'Generating...' : '✨ AI Generate'}
-                    </button>
-                    <button
-                      onClick={() => setShowAddTopic(true)}
-                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
-                    >
-                      + Add
-                    </button>
+                {/* Header - Fixed */}
+                <div className="flex-shrink-0 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xl font-bold text-white">Topics</h3>
+                      {selectedTopics.size > 0 && (
+                        <button
+                          onClick={() => setShowDeleteTopicsConfirm(true)}
+                          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 text-sm transition-colors"
+                        >
+                          🗑 Delete {selectedTopics.size}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleGenerateTopics}
+                        disabled={isGeneratingTopics}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors disabled:opacity-50"
+                      >
+                        {isGeneratingTopics ? 'Generating...' : '✨ AI Generate'}
+                      </button>
+                      <button
+                        onClick={() => setShowAddTopic(true)}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
+                      >
+                        + Add
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={topicSearchQuery}
+                      onChange={(e) => setTopicSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && filteredTopics.length === 1) {
+                          const topicElement = document.getElementById(`topic-${filteredTopics[0].id}`)
+                          topicElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                          topicElement?.classList.add('ring-2', 'ring-white')
+                          setTimeout(() => {
+                            topicElement?.classList.remove('ring-2', 'ring-white')
+                          }, 2000)
+                        }
+                      }}
+                      placeholder="Search topics..."
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                    {topicSearchQuery && filteredTopics.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-dark-900 border border-white/10 rounded-lg shadow-xl max-h-60 overflow-y-auto z-50">
+                        {filteredTopics.slice(0, 10).map((topic) => (
+                          <button
+                            key={topic.id}
+                            onClick={() => {
+                              const topicElement = document.getElementById(`topic-${topic.id}`)
+                              topicElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                              topicElement?.classList.add('ring-2', 'ring-white')
+                              setTimeout(() => {
+                                topicElement?.classList.remove('ring-2', 'ring-white')
+                              }, 2000)
+                              setTopicSearchQuery('')
+                            }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-white/5 transition-colors text-left border-b border-white/5 last:border-0"
+                          >
+                            <div
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: getConfidenceColor(topic.confidence) }}
+                            />
+                            <span className="text-white text-sm">{topic.name}</span>
+                            {topic.group && (
+                              <span className="ml-auto text-xs text-white/40">{topic.group}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress Legend & Stats */}
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span className="text-white/60 text-xs font-medium">Confidence:</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                        <span className="text-xs text-white/60">Not Started ({topicStats.notStarted})</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <span className="text-xs text-white/60">Struggling ({topicStats.struggling})</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                        <span className="text-xs text-white/60">Moderate ({topicStats.moderate})</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <span className="text-xs text-white/60">Confident ({topicStats.confident})</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span className="text-xs text-white/60">Mastered ({topicStats.mastered})</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {topicGroups.length > 1 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {topicGroups.map(group => (
+                        <button
+                          key={group}
+                          onClick={() => setTopicGroupFilter(group)}
+                          className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                            topicGroupFilter === group
+                              ? 'bg-white/20 text-white'
+                              : 'bg-white/5 text-white/60 hover:bg-white/10'
+                          }`}
+                        >
+                          {group === 'all' ? 'All' : group}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {topicGroups.length > 1 && (
-                  <div className="flex gap-2 flex-wrap">
-                    {topicGroups.map(group => (
-                      <button
-                        key={group}
-                        onClick={() => setTopicGroupFilter(group)}
-                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          topicGroupFilter === group
-                            ? 'bg-white/20 text-white'
-                            : 'bg-white/5 text-white/60 hover:bg-white/10'
-                        }`}
-                      >
-                        {group === 'all' ? 'All' : group}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  {filteredTopics.map((topic, index) => {
+                {/* Topics List - Scrollable */}
+                <div className="flex-1 border border-white/[0.06] rounded-lg p-3 overflow-y-auto overflow-x-visible">
+                  <div className="space-y-1.5">
+                  {filteredTopics.map((topic) => {
                     const childTopics = getChildTopics(topic.id)
                     const isCollapsed = collapsedTopics.has(topic.id)
                     const hasChildren = childTopics.length > 0
 
                     return (
                       <div key={topic.id}>
-                        <motion.div
-                          className="p-4 bg-white/5 border border-white/10 rounded-lg relative overflow-hidden"
-                          layout
-                        >
-                          {/* Confidence color bar */}
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-1"
-                            style={{ backgroundColor: getConfidenceColor(topic.confidence) }}
+                        <div id={`topic-${topic.id}`} className="group flex items-center gap-3 px-3 py-2.5 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] rounded-lg transition-all duration-200">
+                          {/* Checkbox for multi-select */}
+                          <input
+                            type="checkbox"
+                            checked={selectedTopics.has(topic.id)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedTopics)
+                              if (e.target.checked) {
+                                newSelected.add(topic.id)
+                              } else {
+                                newSelected.delete(topic.id)
+                              }
+                              setSelectedTopics(newSelected)
+                            }}
+                            className="w-4 h-4 rounded border-white/20 bg-white/5 text-accent-purple focus:ring-2 focus:ring-accent-purple/50 flex-shrink-0 cursor-pointer"
                           />
 
-                          <div className="flex items-start justify-between gap-3 ml-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                {hasChildren && (
-                                  <button
-                                    onClick={() => toggleTopicCollapse(topic.id)}
-                                    className="text-white/60 hover:text-white transition-colors"
-                                  >
-                                    {isCollapsed ? '▶' : '▼'}
-                                  </button>
-                                )}
-                                <h4 className="text-white font-medium">{topic.name}</h4>
-                                {topic.group && (
-                                  <span className="px-2 py-0.5 bg-white/10 text-white/60 text-xs rounded">
-                                    {topic.group}
-                                  </span>
-                                )}
-                              </div>
+                          {/* Expand/Collapse for children */}
+                          {hasChildren ? (
+                            <button
+                              onClick={() => toggleTopicCollapse(topic.id)}
+                              className="text-white/40 hover:text-white transition-colors text-sm flex-shrink-0 w-4 text-center"
+                            >
+                              {isCollapsed ? '▶' : '▼'}
+                            </button>
+                          ) : (
+                            <div className="w-4 flex-shrink-0"></div>
+                          )}
 
-                              <div className="flex items-center gap-2 mb-2">
-                                <CustomSelect
-                                  value={topic.confidence || 'not-started'}
-                                  onChange={(value) => updateTopic(topic.id, { confidence: value as TopicConfidence })}
-                                  options={[
-                                    { value: 'not-started', label: 'Not Started' },
-                                    { value: 'struggling', label: 'Struggling' },
-                                    { value: 'moderate', label: 'Moderate' },
-                                    { value: 'confident', label: 'Confident' },
-                                    { value: 'mastered', label: 'Mastered' }
-                                  ]}
-                                  className="text-xs"
-                                />
-                              </div>
+                          {/* Topic name - flexible width */}
+                          <h4 className="text-white text-sm font-medium flex-1 truncate min-w-0">{topic.name}</h4>
 
-                              {topic.lastReviewed && (
-                                <p className="text-white/40 text-xs">
-                                  Last reviewed: {new Date(topic.lastReviewed).toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  setNewTopic({ name: '', group: topic.group || '', parentTopicId: topic.id })
-                                  setShowAddTopic(true)
-                                }}
-                                className="p-1 text-white/40 hover:text-white transition-colors text-xs"
-                                title="Add subtopic"
-                              >
-                                +
-                              </button>
-                              <button
-                                onClick={() => handleMoveTopic(topic.id, 'up')}
-                                disabled={index === 0}
-                                className="p-1 text-white/40 hover:text-white disabled:opacity-30 transition-colors"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                onClick={() => handleMoveTopic(topic.id, 'down')}
-                                disabled={index === filteredTopics.length - 1}
-                                className="p-1 text-white/40 hover:text-white disabled:opacity-30 transition-colors"
-                              >
-                                ↓
-                              </button>
-                              <button
-                                onClick={() => handleMarkReviewed(topic.id)}
-                                className={`px-2 py-1 rounded text-xs transition-colors ${
-                                  topic.lastReviewed
-                                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                                    : 'bg-white/10 hover:bg-white/20 text-white'
-                                }`}
-                              >
-                                {topic.lastReviewed ? '✓' : 'Review'}
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirm({ type: 'topic', id: topic.id, name: topic.name })}
-                                className="text-white/40 hover:text-red-400 transition-colors text-sm"
-                              >
-                                🗑
-                              </button>
+                          {/* Group badge */}
+                          {topic.group && (
+                            <span className="px-2 py-0.5 bg-white/10 text-white/50 text-xs rounded flex-shrink-0">
+                              {topic.group}
+                            </span>
+                          )}
+
+                          {/* Confidence selector - compact dropdown */}
+                          <div className="flex-shrink-0 relative group/conf">
+                            <button
+                              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all text-xs"
+                            >
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: getConfidenceColor(topic.confidence) }}
+                              />
+                              <span className="text-white/80">
+                                {(topic.confidence || 'not-started').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                              </span>
+                            </button>
+                            {/* Dropdown menu - opens to the left */}
+                            <div className="absolute right-full top-0 mr-2 bg-dark-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover/conf:opacity-100 group-hover/conf:visible transition-all min-w-[160px] py-1 z-50">
+                              {[
+                                { value: 'not-started', label: 'Not Started', color: '#6b7280' },
+                                { value: 'struggling', label: 'Struggling', color: '#ef4444' },
+                                { value: 'moderate', label: 'Moderate', color: '#f59e0b' },
+                                { value: 'confident', label: 'Confident', color: '#3b82f6' },
+                                { value: 'mastered', label: 'Mastered', color: '#10b981' }
+                              ].map((conf) => (
+                                <button
+                                  key={conf.value}
+                                  onClick={() => updateTopic(topic.id, { confidence: conf.value as TopicConfidence })}
+                                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition-colors text-left text-xs first:rounded-t-lg last:rounded-b-lg"
+                                >
+                                  <div
+                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: conf.color }}
+                                  />
+                                  <span className="text-white/80">{conf.label}</span>
+                                </button>
+                              ))}
                             </div>
                           </div>
-                        </motion.div>
+
+                          {/* Add Subtopic Button - Prominent */}
+                          <button
+                            onClick={() => {
+                              setNewTopic({ name: '', group: topic.group || '', parentTopicId: topic.id })
+                              setShowAddTopic(true)
+                            }}
+                            className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg transition-all hover:scale-110 text-white text-lg font-bold"
+                            title="Add subtopic"
+                          >
+                            +
+                          </button>
+                        </div>
 
                         {/* Nested/Child Topics */}
                         {hasChildren && !isCollapsed && (
-                          <div className="ml-8 mt-2 space-y-2 border-l-2 border-white/10 pl-4">
-                            {childTopics.map((childTopic, childIndex) => (
-                              <motion.div
+                          <div className="ml-6 mt-1.5 space-y-1 border-l-2 border-white/[0.06] pl-3">
+                            {childTopics.map((childTopic) => (
+                              <div
                                 key={childTopic.id}
-                                className="p-3 bg-white/5 border border-white/10 rounded-lg relative overflow-hidden"
-                                layout
+                                id={`topic-${childTopic.id}`}
+                                className="group flex items-center gap-3 px-3 py-2 bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] rounded-lg transition-all duration-200"
                               >
-                                <div
-                                  className="absolute left-0 top-0 bottom-0 w-1"
-                                  style={{ backgroundColor: getConfidenceColor(childTopic.confidence) }}
+                                {/* Checkbox for multi-select */}
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTopics.has(childTopic.id)}
+                                  onChange={(e) => {
+                                    const newSelected = new Set(selectedTopics)
+                                    if (e.target.checked) {
+                                      newSelected.add(childTopic.id)
+                                    } else {
+                                      newSelected.delete(childTopic.id)
+                                    }
+                                    setSelectedTopics(newSelected)
+                                  }}
+                                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-accent-purple focus:ring-2 focus:ring-accent-purple/50 flex-shrink-0 cursor-pointer"
                                 />
 
-                                <div className="flex items-start justify-between gap-3 ml-3">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <h5 className="text-white font-medium text-sm">{childTopic.name}</h5>
-                                    </div>
+                                {/* Spacer for alignment */}
+                                <div className="w-4 flex-shrink-0"></div>
 
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <CustomSelect
-                                        value={childTopic.confidence || 'not-started'}
-                                        onChange={(value) => updateTopic(childTopic.id, { confidence: value as TopicConfidence })}
-                                        options={[
-                                          { value: 'not-started', label: 'Not Started' },
-                                          { value: 'struggling', label: 'Struggling' },
-                                          { value: 'moderate', label: 'Moderate' },
-                                          { value: 'confident', label: 'Confident' },
-                                          { value: 'mastered', label: 'Mastered' }
-                                        ]}
-                                        className="text-xs"
-                                      />
-                                    </div>
+                                {/* Subtopic name */}
+                                <h5 className="text-white/90 text-sm flex-1 truncate min-w-0">{childTopic.name}</h5>
 
-                                    {childTopic.lastReviewed && (
-                                      <p className="text-white/40 text-xs">
-                                        Last reviewed: {new Date(childTopic.lastReviewed).toLocaleDateString()}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => handleMoveTopic(childTopic.id, 'up')}
-                                      disabled={childIndex === 0}
-                                      className="p-1 text-white/40 hover:text-white disabled:opacity-30 transition-colors text-xs"
-                                    >
-                                      ↑
-                                    </button>
-                                    <button
-                                      onClick={() => handleMoveTopic(childTopic.id, 'down')}
-                                      disabled={childIndex === childTopics.length - 1}
-                                      className="p-1 text-white/40 hover:text-white disabled:opacity-30 transition-colors text-xs"
-                                    >
-                                      ↓
-                                    </button>
-                                    <button
-                                      onClick={() => handleMarkReviewed(childTopic.id)}
-                                      className={`px-2 py-1 rounded text-xs transition-colors ${
-                                        childTopic.lastReviewed
-                                          ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                                          : 'bg-white/10 hover:bg-white/20 text-white'
-                                      }`}
-                                    >
-                                      {childTopic.lastReviewed ? '✓' : 'Review'}
-                                    </button>
-                                    <button
-                                      onClick={() => setDeleteConfirm({ type: 'topic', id: childTopic.id, name: childTopic.name })}
-                                      className="text-white/40 hover:text-red-400 transition-colors text-xs"
-                                    >
-                                      🗑
-                                    </button>
+                                {/* Confidence selector - compact dropdown */}
+                                <div className="flex-shrink-0 relative group/conf">
+                                  <button
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all text-xs"
+                                  >
+                                    <div
+                                      className="w-3 h-3 rounded-full"
+                                      style={{ backgroundColor: getConfidenceColor(childTopic.confidence) }}
+                                    />
+                                    <span className="text-white/80">
+                                      {(childTopic.confidence || 'not-started').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                    </span>
+                                  </button>
+                                  {/* Dropdown menu - opens to the left */}
+                                  <div className="absolute right-full top-0 mr-2 bg-dark-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover/conf:opacity-100 group-hover/conf:visible transition-all min-w-[160px] py-1 z-50">
+                                    {[
+                                      { value: 'not-started', label: 'Not Started', color: '#6b7280' },
+                                      { value: 'struggling', label: 'Struggling', color: '#ef4444' },
+                                      { value: 'moderate', label: 'Moderate', color: '#f59e0b' },
+                                      { value: 'confident', label: 'Confident', color: '#3b82f6' },
+                                      { value: 'mastered', label: 'Mastered', color: '#10b981' }
+                                    ].map((conf) => (
+                                      <button
+                                        key={conf.value}
+                                        onClick={() => updateTopic(childTopic.id, { confidence: conf.value as TopicConfidence })}
+                                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/5 transition-colors text-left text-xs first:rounded-t-lg last:rounded-b-lg"
+                                      >
+                                        <div
+                                          className="w-3 h-3 rounded-full flex-shrink-0"
+                                          style={{ backgroundColor: conf.color }}
+                                        />
+                                        <span className="text-white/80">{conf.label}</span>
+                                      </button>
+                                    ))}
                                   </div>
                                 </div>
-                              </motion.div>
+
+                                {/* Spacer for alignment with parent topics */}
+                                <div className="w-7 flex-shrink-0"></div>
+                              </div>
                             ))}
                           </div>
                         )}
@@ -669,6 +882,7 @@ const Subjects = () => {
                   {filteredTopics.length === 0 && (
                     <p className="text-white/40 text-sm text-center py-8">No topics yet</p>
                   )}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -683,38 +897,103 @@ const Subjects = () => {
               >
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-white">Resources</h3>
-                  <button
-                    onClick={() => setShowAddResource(true)}
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
-                  >
-                    + Add
-                  </button>
+                  <div className="flex gap-2">
+                    <CustomSelect
+                      value={resourceSortBy}
+                      onChange={(value) => setResourceSortBy(value as 'name' | 'type' | 'date')}
+                      options={[
+                        { value: 'name', label: 'Sort: Name' },
+                        { value: 'type', label: 'Sort: Type' },
+                        { value: 'date', label: 'Sort: Date' }
+                      ]}
+                      className="text-xs"
+                    />
+                    <button
+                      onClick={() => {
+                        setNewResource({ name: '', type: 'folder', url: '', parentFolderId: currentFolderId || '' })
+                        setShowAddResource(true)
+                      }}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
+                    >
+                      📁 Folder
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNewResource({ name: '', type: 'link', url: '', parentFolderId: currentFolderId || '' })
+                        setShowAddResource(true)
+                      }}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
+                    >
+                      + Add
+                    </button>
+                  </div>
                 </div>
 
+                {/* Breadcrumb navigation */}
+                {(currentFolderId || folderPath.length > 0) && (
+                  <div className="flex items-center gap-2 text-sm text-white/60 mb-4">
+                    <button
+                      onClick={() => setCurrentFolderId(null)}
+                      className="hover:text-white transition-colors"
+                    >
+                      📚 Resources
+                    </button>
+                    {folderPath.map((folder) => (
+                      <span key={folder.id} className="flex items-center gap-2">
+                        <span>/</span>
+                        <button
+                          onClick={() => setCurrentFolderId(folder.id)}
+                          className="hover:text-white transition-colors"
+                        >
+                          {folder.name}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {subjectResources.map((resource) => (
+                  {currentFolderResources.map((resource) => (
                     <motion.div
                       key={resource.id}
-                      className="p-4 bg-white/5 border border-white/10 rounded-lg"
+                      className={`p-4 border border-white/10 rounded-lg ${
+                        resource.type === 'folder'
+                          ? 'bg-white/10 cursor-pointer hover:bg-white/15'
+                          : 'bg-white/5 hover:bg-white/10'
+                      }`}
                       whileHover={{ scale: 1.02 }}
+                      onClick={() => {
+                        if (resource.type === 'folder') {
+                          setCurrentFolderId(resource.id)
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="text-white font-medium mb-1">{resource.name}</h4>
-                          <p className="text-white/60 text-xs">{resource.type}</p>
-                          {resource.url && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xl">{getResourceIcon(resource.type)}</span>
+                            <h4 className="text-white font-medium">{resource.name}</h4>
+                          </div>
+                          {resource.type !== 'folder' && (
+                            <p className="text-white/60 text-xs capitalize ml-7">{resource.type}</p>
+                          )}
+                          {resource.url && resource.type !== 'folder' && (
                             <a
                               href={resource.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 text-xs truncate block mt-1"
+                              className="text-blue-400 hover:text-blue-300 text-xs truncate block mt-1 ml-7"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {resource.url}
                             </a>
                           )}
                         </div>
                         <button
-                          onClick={() => setDeleteConfirm({ type: 'resource', id: resource.id, name: resource.name })}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleteConfirm({ type: 'resource', id: resource.id, name: resource.name })
+                          }}
                           className="text-white/40 hover:text-red-400 transition-colors text-sm"
                         >
                           🗑
@@ -722,17 +1001,21 @@ const Subjects = () => {
                       </div>
                     </motion.div>
                   ))}
-                  {subjectResources.length === 0 && (
-                    <p className="text-white/40 text-sm text-center py-8 col-span-full">No resources yet</p>
+                  {currentFolderResources.length === 0 && (
+                    <p className="text-white/40 text-sm text-center py-8 col-span-full">
+                      {currentFolderId ? 'This folder is empty' : 'No resources yet'}
+                    </p>
                   )}
                 </div>
               </motion.div>
             )}
           </div>
 
-          {/* Delete Confirmation Modal */}
-          <AnimatePresence>
-            {deleteConfirm && (
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        <AnimatePresence mode="wait">
+          {deleteConfirm && (
               <motion.div
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                 initial={{ opacity: 0 }}
@@ -771,11 +1054,50 @@ const Subjects = () => {
                 </motion.div>
               </motion.div>
             )}
-          </AnimatePresence>
-        </div>
+        </AnimatePresence>
+
+        {/* Delete Topics Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteTopicsConfirm && (
+            <motion.div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteTopicsConfirm(false)}
+            >
+              <motion.div
+                className="bg-dark-900 border border-red-500/30 rounded-2xl p-6 max-w-md w-full"
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-xl font-bold text-white mb-2">Confirm Delete</h3>
+                <p className="text-white/60 mb-4">
+                  Are you sure you want to delete <span className="text-white font-medium">{selectedTopics.size}</span> selected topic{selectedTopics.size > 1 ? 's' : ''}?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={confirmDeleteTopics}
+                    className="flex-1 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-white font-medium transition-colors"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteTopicsConfirm(false)}
+                    className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Add Exam Modal */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {showAddExam && (
             <motion.div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -841,7 +1163,7 @@ const Subjects = () => {
         </AnimatePresence>
 
         {/* Add Topic Modal */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {showAddTopic && (
             <motion.div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -914,7 +1236,7 @@ const Subjects = () => {
         </AnimatePresence>
 
         {/* Add Resource Modal */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {showAddResource && (
             <motion.div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -931,48 +1253,61 @@ const Subjects = () => {
                 exit={{ scale: 0.95 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-xl font-bold text-white mb-4">Add Resource</h3>
+                <h3 className="text-xl font-bold text-white mb-4">
+                  {newResource.type === 'folder' ? 'New Folder' : 'Add Resource'}
+                </h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-white/60 text-sm mb-2">Resource Name</label>
+                    <label className="block text-white/60 text-sm mb-2">
+                      {newResource.type === 'folder' ? 'Folder Name' : 'Resource Name'}
+                    </label>
                     <input
                       type="text"
                       value={newResource.name}
                       onChange={(e) => setNewResource({ ...newResource, name: e.target.value })}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20"
-                      placeholder="Textbook Chapter 5"
+                      placeholder={newResource.type === 'folder' ? 'Past Papers' : 'Textbook Chapter 5'}
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-white/60 text-sm mb-2">Type</label>
-                    <CustomSelect
-                      value={newResource.type}
-                      onChange={(value) => setNewResource({ ...newResource, type: value as any })}
-                      options={[
-                        { value: 'link', label: 'Link' },
-                        { value: 'file', label: 'File' },
-                        { value: 'note', label: 'Note' }
-                      ]}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/60 text-sm mb-2">URL (Optional)</label>
-                    <input
-                      type="url"
-                      value={newResource.url}
-                      onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20"
-                      placeholder="https://..."
-                    />
-                  </div>
+                  {newResource.type !== 'folder' && (
+                    <>
+                      <div>
+                        <label className="block text-white/60 text-sm mb-2">Type</label>
+                        <CustomSelect
+                          value={newResource.type}
+                          onChange={(value) => setNewResource({ ...newResource, type: value as any })}
+                          options={[
+                            { value: 'link', label: 'Link' },
+                            { value: 'file', label: 'File' },
+                            { value: 'note', label: 'Note' }
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white/60 text-sm mb-2">URL (Optional)</label>
+                        <input
+                          type="url"
+                          value={newResource.url}
+                          onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20"
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </>
+                  )}
+                  {currentFolder && (
+                    <p className="text-white/60 text-sm">
+                      Location: <span className="text-white font-medium">{currentFolder.name}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-3 mt-6">
                   <button
                     type="submit"
                     className="flex-1 py-3 bg-white/20 hover:bg-white/30 rounded-lg text-white font-medium transition-colors"
                   >
-                    Add Resource
+                    {newResource.type === 'folder' ? 'Create Folder' : 'Add Resource'}
                   </button>
                   <button
                     type="button"
@@ -1000,7 +1335,7 @@ const Subjects = () => {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-1">Subjects 📚</h2>
+            <h2 className="text-3xl font-bold text-white mb-1">Subjects</h2>
             <p className="text-white/60">Manage your subjects and study materials</p>
           </div>
           <button
@@ -1060,7 +1395,7 @@ const Subjects = () => {
       </div>
 
       {/* Add Subject Modal */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showAddSubject && (
           <motion.div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -1155,7 +1490,7 @@ const Subjects = () => {
       </AnimatePresence>
 
       {/* Edit Subject Modal */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showEditSubject && editingSubject && (
           <motion.div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
